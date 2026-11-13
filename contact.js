@@ -11,7 +11,7 @@ const contactIntents={
 const CONTACT_FORM_ENDPOINT="https://formsubmit.co/ajax/info@gaihekiplus.com";
 function contactNotification(data){
  const c=data.case_id?contactCases.get(data.case_id):null;
- const subject=data.action==="materials"?"【資料ダウンロード】"+data.company_name:"【案件エリアマップ】"+contactIntents[data.action].label+" / "+data.company_name;
+ const subject="【資料ダウンロード】"+contactIntents[data.action].label+" / "+data.company_name;
  return {_subject:subject,_template:"table",email:data.email,
  "受付番号":data.request_id,"ご用件":contactIntents[data.action].label,"会社名":data.company_name,"担当者名":data.contact_name,"電話番号":data.phone,"メールアドレス":data.email,
  "電話可能日":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般"};
