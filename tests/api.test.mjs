@@ -23,4 +23,7 @@ assert.equal((await handler(request({api:'cases',keys:['no-separator']}))).statu
 assert.equal((await handler(request({api:'bootstrap',services:'mizumawari'}))).status,400);
 const legacy=await handler(new Request('https://example.invalid/lead-map-api?k=qa-token&api=metrics'));assert.equal(legacy.status,200);assert.deepEqual(Object.keys(await legacy.json()).sort(),['last7','snapshot','today','total']);
 const preflight=await handler(new Request('https://example.invalid',{method:'OPTIONS'}));assert.equal(preflight.status,204);assert.match(preflight.headers.get('Access-Control-Allow-Headers'),/x-lead-map-key/);
+assert.equal((await handler(request({api:'cases',filters:{recent_days:'7','q:築年数は？':'15〜20年'},limit:10}))).status,200);assert.equal(invocations.at(-1).name,'lead_map_page_v3');assert.equal(invocations.at(-1).args.p_limit,10);assert.equal(invocations.at(-1).args.p_filters.recent_days,'7');
+assert.equal((await handler(request({api:'case_filters',keys:[]}))).status,200);assert.equal(invocations.at(-1).name,'lead_map_filter_options_v3');
+for(const filters of [[],{'other':'x'},{recent_days:'999'},{service_code:'mizumawari'},{items:1},Object.fromEntries(Array.from({length:13},(_,i)=>['q:field'+i,'x']))])assert.equal((await handler(request({api:'cases',filters}))).status,400);
 console.log('API: auth, legacy URL, CORS, zero keys, 250 areas and invalid requests passed');

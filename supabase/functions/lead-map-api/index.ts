@@ -36,13 +36,21 @@ Deno.serve(async(req:Request)=>{
    if(api==="metrics")return out({...data.metrics,snapshot:data.snapshot});
    return out(data);
   }
-  if(api==="cases"){
+  if(api==="cases"||api==="case_filters"){
    const raw=get("keys");
    const keys=raw==null?null:Array.isArray(raw)?raw:String(raw).split(",").filter(Boolean);
    if(keys&&(keys.length>3000||keys.some(k=>typeof k!=="string"||k.length>100||!k.includes("|"))))return out({error:"invalid_keys"},400);
-   const limit=Number(get("limit")??50),offset=Number(get("offset")??0);
+   if(api==="case_filters"){
+    const {data,error}=await sb.rpc("lead_map_filter_options_v3",{...common,p_keys:keys});
+    if(error)return out({error:"data_unavailable"},500);
+    return out(data);
+   }
+   let filters=get("filters")??{};
+   if(typeof filters==="string"){try{filters=JSON.parse(filters)}catch{return out({error:"invalid_filters"},400)}}
+   if(!filters||typeof filters!=="object"||Array.isArray(filters)||Object.keys(filters).length>12||Object.entries(filters).some(([k,v])=>k.length>160||typeof v!=="string"||!v||v.length>160||!(/^(service_code|items|recent_days|q:.+|d:(building_type|consideration_level|symptoms|story|age_of_building))$/.test(k))||(k==="recent_days"&&!["1","3","7","30"].includes(v))||(k==="service_code"&&!["gaiheki","amamori"].includes(v))))return out({error:"invalid_filters"},400);
+   const limit=Number(get("limit")??10),offset=Number(get("offset")??0);
    if(!Number.isInteger(limit)||limit<1||!Number.isInteger(offset)||offset<0)return out({error:"invalid_page"},400);
-   const {data,error}=await sb.rpc("lead_map_page_v2",{...common,p_keys:keys,p_limit:Math.min(limit,50),p_offset:offset});
+   const {data,error}=await sb.rpc("lead_map_page_v3",{...common,p_keys:keys,p_limit:Math.min(limit,50),p_offset:offset,p_filters:filters});
    if(error){console.error("lead-map page",error.code);return out({error:"data_unavailable"},500)}
    return out(data);
   }

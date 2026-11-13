@@ -5,7 +5,8 @@ const TOKEN=params.get("k")||"";
 const CALENDAR_URL="https://calendar.app.google/mRRBUfa9pHoPJVxeA";
 const CONTACT_EMAIL="info@gaihekiplus.com";
 const contactCases=new Map();
-const PAGE_SIZE=50;
+const PAGE_SIZE=10;
+let caseFilters={};
 const $=id=>document.getElementById(id);
 const fmt=n=>new Intl.NumberFormat("ja-JP").format(Number(n||0));
 const norm=s=>String(s||"").normalize("NFKC").replace(/ヶ/g,"ケ").replace(/[\s　]/g,"").trim();
@@ -99,7 +100,7 @@ function updateURL(){const u=new URL(location.href);["pref","city","r","service"
 function beginView(next){
  generation++;contactCases.clear();pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
  $("searchStatus").textContent="";$("candidates").replaceChildren();$("list").innerHTML='<div class="empty">案件を読み込んでいます…</div>';$("pageStatus").textContent="";$("loadMore").hidden=true;$("list").setAttribute("aria-busy","true");
- $("title").textContent=next.label+"の案件一覧";$("sub").textContent="全"+fmt(pageTotal)+"件・50件ずつ表示";$("prefSelect").value=next.pref||"";$("breadcrumb").textContent=next.label==="全国"?"":"／ "+next.label;setArea(next.label,pageTotal);updateURL();return generation;
+ $("title").textContent=next.label+"の案件一覧";$("sub").textContent="全"+fmt(pageTotal)+"件・10件ずつ表示";$("prefSelect").value=next.pref||"";$("breadcrumb").textContent=next.label==="全国"?"":"／ "+next.label;setArea(next.label,pageTotal);updateURL();if(typeof syncCaseFilterContext==="function")syncCaseFilterContext();return generation;
 }
 async function showJapan(){const id=beginView({kind:"nation",label:"全国",keys:null,pref:""});drawNation();await loadPage(id)}
 async function showPref(pref){
@@ -113,14 +114,17 @@ async function showCity(k){
 async function loadPage(id=generation){
  if(pageLoading||id!==generation)return;pageLoading=true;const ctrl=new AbortController();pageController=ctrl;$("loadMore").disabled=true;$("list").setAttribute("aria-busy","true");
  try{
-  const data=await call({api:"cases",services:service==="all"?"gaiheki,amamori":service,keys:view.keys,limit:PAGE_SIZE,offset:pageCount,snapshot},ctrl.signal);
+  const data=await call({api:"cases",services:service==="all"?"gaiheki,amamori":service,keys:view.keys,limit:PAGE_SIZE,offset:pageCount,snapshot,filters:caseFilters},ctrl.signal);
   if(id!==generation)return;
-  if(Number(data.total)!==pageTotal)throw new Error("集計の更新を確認しました。上の「更新」で最新データを取得してください。");
+  if(Number(data.area_total??data.total)!==sumKeys(view.keys))throw new Error("集計の更新を確認しました。上の「更新」で最新データを取得してください。");
+  pageTotal=Number(data.total);
+  const filtered=Object.keys(caseFilters).length>0;
+  $("sub").textContent=filtered?"地域全体"+fmt(sumKeys(view.keys))+"件 ／ 条件に一致"+fmt(pageTotal)+"件・10件ずつ表示":"全"+fmt(pageTotal)+"件・10件ずつ表示";
   if(pageCount===0)$("list").replaceChildren();
   const rows=data.cases||[];if(!rows.length&&pageCount<pageTotal)throw new Error("続きを取得できませんでした。もう一度お試しください。");
   const unique=rows.filter(c=>{const k=c.case_id;if(seen.has(k))return false;seen.add(k);return true});
   $("list").insertAdjacentHTML("beforeend",unique.map(cardHTML).join(""));pageCount+=rows.length;
-  if(!pageTotal)$("list").innerHTML='<div class="empty">現在、このエリアの該当案件はありません。<br>距離を40kmに広げるか、周辺の地域をお試しください。</div>';
+  if(!pageTotal)$("list").innerHTML='<div class="empty">現在、このエリアの該当案件はありません。<br>絞り込み条件を変えるか、検索範囲を広げてお試しください。</div>';
   $("pageStatus").textContent="全"+fmt(pageTotal)+"件中 "+fmt(seen.size)+"件を表示";$("loadMore").hidden=pageCount>=pageTotal;$("loadMore").textContent="さらに"+Math.min(PAGE_SIZE,pageTotal-pageCount)+"件表示";
  }catch(e){if(id!==generation||e.name==="AbortError")return;
   if(!pageCount)$("list").innerHTML='<div class="empty">'+esc(e.message)+'<br><button type="button" id="retryPage">再読み込み</button></div>';

@@ -14,7 +14,7 @@ function contactNotification(data){
  const subject="【資料ダウンロード】"+contactIntents[data.action].label+" / "+data.company_name;
  return {_subject:subject,_template:"table",email:data.email,
  "受付番号":data.request_id,"ご用件":contactIntents[data.action].label,"会社名":data.company_name,"担当者名":data.contact_name,"電話番号":data.phone,"メールアドレス":data.email,
- "電話可能日":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般"};
+ "電話可能日":data.preferred_window==="now"?"今すぐの連絡を希望":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="now"?"今すぐ":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般"};
 }
 async function contactRequest(data){
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),25000);
@@ -30,7 +30,7 @@ async function contactRequest(data){
  }catch(e){if(e.name==="AbortError")throw new Error("送信結果を確認できませんでした。再送すると重複する場合があります。お急ぎの場合は下の予約ページをご利用ください。");if(e.name==="TypeError")throw new Error("通信を完了できませんでした。接続状況を確認するか、下のメール窓口・予約ページをご利用ください。");throw e;}finally{clearTimeout(timer)}
 }
 function contactToday(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10)}
-function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").disabled=busy;contactEl("contactSubmit").textContent=busy?"送信しています…":contactIntents[contactAction].submit;contactEl("contactClose").disabled=busy;contactEl("contactForm").querySelectorAll("input,select,button").forEach(el=>el.disabled=busy);}
+function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").disabled=busy;contactEl("contactSubmit").textContent=busy?"送信しています…":contactIntents[contactAction].submit;contactEl("contactClose").disabled=busy;contactEl("contactForm").querySelectorAll("input,select,button").forEach(el=>el.disabled=busy||(!busy&&el.id==="contactDate"&&contactEl("contactForm").querySelector('input[name="callback_time"]:checked')?.value==="now"));}
 async function openContactDialog(action,caseId,opener){
  if(contactSubmitting)return;
  const version=++contactOpenVersion;contactAction=Object.hasOwn(contactIntents,action)?action:"conditions";contactCaseId=caseId||null;contactOpener=opener;contactSubmissionId=null;contactSubmissionBody=null;
@@ -49,6 +49,7 @@ async function openContactDialog(action,caseId,opener){
  contactDialog.scrollTop=0;
  contactEl("contactLoading").hidden=true;
  contactEl("contactForm").hidden=false;
+ contactEl("contactDate").disabled=contactEl("contactForm").querySelector('input[name="callback_time"]:checked')?.value==="now";
  contactEl("contactCompany").focus({preventScroll:true});
 }
 function closeContactDialog(){if(contactSubmitting)return;contactOpenVersion++;if(typeof contactDialog.close==="function")contactDialog.close();else contactDialog.removeAttribute("open");contactOpener?.focus({preventScroll:true});}
@@ -76,6 +77,7 @@ async function handleContactSubmit(e){
   const payload={action:contactAction,case_id:contactCaseId,company_name:contactEl("contactCompany").value,contact_name:contactEl("contactName").value,phone:contactEl("contactPhone").value.normalize("NFKC").replace(/[\s()（）ー－-]/g,""),email:contactEl("contactEmail").value.toLowerCase(),preferred_date:contactEl("contactDate").value||null,preferred_window:form.querySelector('input[name="callback_time"]:checked')?.value||"any"};
   if(payload.phone.startsWith("+81"))payload.phone="0"+payload.phone.slice(3);
   if(!/^0[1-9][0-9]{8,9}$/.test(payload.phone)){contactShowError("電話番号は10桁または11桁で入力してください。ハイフン付きでも入力できます。");contactEl("contactPhone").setAttribute("aria-invalid","true");return;}
+  if(payload.preferred_window==="now")payload.preferred_date=null;
   const body=JSON.stringify(payload);if(body!==contactSubmissionBody){contactSubmissionId=crypto.randomUUID();contactSubmissionBody=body;}
   contactEl("contactError").hidden=true;contactEl("contactUnavailable").hidden=true;contactSetBusy(true);
   const result=await contactRequest({request_id:contactSubmissionId,...payload});contactShowResult(result,payload);
@@ -88,3 +90,5 @@ contactDialog.addEventListener("cancel",e=>{e.preventDefault();closeContactDialo
 contactEl("contactForm").addEventListener("submit",handleContactSubmit);
 contactEl("contactPhone").addEventListener("input",()=>contactEl("contactPhone").setCustomValidity(""));
 document.addEventListener("input",e=>{if(e.target?.matches?.("#contactForm input"))e.target.removeAttribute("aria-invalid")});
+
+document.addEventListener("change",e=>{if(e.target?.name!=="callback_time")return;const now=e.target.value==="now";contactEl("contactDate").disabled=now;if(now)contactEl("contactDate").value="";});

@@ -8,4 +8,5 @@ for(const action of ['materials','trial','respond','conditions']){const {get}=re
 assert.equal(render('',{}).get('thanksSummary').hidden,true);
 assert.equal(render('#receipt='+id+'&intent=__proto__',{}).get('thanksSummary').hidden,true);
 assert.equal(render('#receipt='+id+'&intent=materials',{request_id:'other',preferred_date:'2026-11-24'}).get('thanksDate').textContent,'指定なし');
+const now=render('#receipt='+id+'&intent=respond',{request_id:id,preferred_window:'now',preferred_date:null});assert.equal(now.get('thanksTime').textContent,'今すぐ');assert.equal(now.get('thanksDate').textContent,'今すぐの連絡を希望');
 console.log('Thanks: all intents, selected date/time, safe direct visit, stale/malformed receipt handling passed');

@@ -10,8 +10,8 @@ if(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test
  document.getElementById("thanksReference").textContent=thanksReceipt;
  let saved;try{saved=JSON.parse(sessionStorage.getItem("lead-map-confirmation")||"null")}catch{}
  const valid=saved?.request_id===thanksReceipt;
- const date=valid&&/^\d{4}-\d{2}-\d{2}$/.test(saved.preferred_date||"")?saved.preferred_date.replaceAll("-","/"):"指定なし";
- const time=valid&&/^(09|1[0-9]|20):00-(1[0-9]|2[01]):00$/.test(saved.preferred_window||"")?saved.preferred_window.replace("-","〜"):"指定なし";
+ const date=valid&&saved.preferred_window==="now"?"今すぐの連絡を希望":valid&&/^\d{4}-\d{2}-\d{2}$/.test(saved.preferred_date||"")?saved.preferred_date.replaceAll("-","/"):"指定なし";
+ const time=valid&&saved.preferred_window==="now"?"今すぐ":valid&&/^(09|1[0-9]|20):00-(1[0-9]|2[01]):00$/.test(saved.preferred_window||"")?saved.preferred_window.replace("-","〜"):"指定なし";
  document.getElementById("thanksDate").textContent=date;
  document.getElementById("thanksTime").textContent=time;
  document.getElementById("thanksSummary").hidden=false;
