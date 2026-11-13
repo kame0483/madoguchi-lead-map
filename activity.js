@@ -3,11 +3,12 @@
 (()=>{
  if(!TOKEN)return;
  let saved=null;try{saved=JSON.parse(sessionStorage.getItem('lead-map-visit')||'null')}catch{}
- const valid=saved&&/^[0-9a-f-]{36}$/i.test(saved.id)&&Date.now()-saved.updated<1800000;
- const id=valid?saved.id:crypto.randomUUID(),code=params.get('company')||'';
+ const code=params.get('company')||'',company=/^[A-Za-z0-9_-]{1,64}$/.test(code)?code:'';
+ const valid=saved&&/^[0-9a-f-]{36}$/i.test(saved.id)&&Date.now()-saved.updated<1800000&&(saved.company||'')===company;
+ const id=valid?saved.id:crypto.randomUUID();
  let active=valid?Number(saved.active)||0:0,lastTick=performance.now(),lastInput=lastTick,queue=[],sending=false,lastSent=-1;
- const device=matchMedia('(max-width: 760px)').matches?'mobile':'desktop',company=/^[A-Za-z0-9_-]{1,64}$/.test(code)?code:'';
- const persist=()=>{try{sessionStorage.setItem('lead-map-visit',JSON.stringify({id,active,updated:Date.now()}))}catch{}};
+ const device=matchMedia('(max-width: 760px)').matches?'mobile':'desktop';
+ const persist=()=>{try{sessionStorage.setItem('lead-map-visit',JSON.stringify({id,company,active,updated:Date.now()}))}catch{}};
  function tick(){const now=performance.now();if(document.visibilityState==='visible'&&now-lastInput<60000)active=Math.min(86400000,active+Math.max(0,Math.min(now-lastTick,5000)));lastTick=now;persist();}
  function track(kind,meta={}){tick();queue.push({event_id:crypto.randomUUID(),kind,page:'map',active_ms:Math.round(active),...meta});if(queue.length>100)queue.shift();if(kind!=='heartbeat')flush();}
  async function flush(keepalive=false){

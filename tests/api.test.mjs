@@ -29,5 +29,5 @@ for(const filters of [[],{'other':'x'},{recent_days:'999'},{service_code:'mizuma
 console.log('API: auth, legacy URL, CORS, zero keys, 250 areas and invalid requests passed');
 
 assert.equal((await handler(request({api:'admin_report'}))).status,403,'viewer cannot read analytics');
-assert.equal((await handler(new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json','x-lead-map-admin':'qa-admin'},body:JSON.stringify({api:'admin_report',days:7})}))).status,200);assert.equal(invocations.at(-1).name,'lead_map_admin_report_v1');
+assert.equal((await handler(new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json','x-lead-map-admin':'qa-admin'},body:JSON.stringify({api:'admin_report',days:7})}))).status,200);assert.equal(invocations.at(-1).name,'lead_map_admin_report_v2');
 assert.equal((await handler(new Request('https://example.invalid',{method:'GET',headers:{'x-lead-map-admin':'qa-admin'}}))).status,403,'admin key does not grant case API access');

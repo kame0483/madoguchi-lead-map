@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { ACCESS_HASH } from "./access-config.ts";
 import { contactConfig, submitContact } from "./contact.ts";
 import { ADMIN_HASH, CHAT_WEBHOOK } from "./notification-config.ts";
-import { normalizeActivity, registerConversion, deliverChat, postChat, uuid } from "./activity.ts";
+import { normalizeActivity, registerConversion, deliverChat, postChat, uuid, normalizeCompanies } from "./activity.ts";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-lead-map-key,x-lead-map-admin","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
 async function sha256Hex(input:string){const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(input));return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,"0")).join("");}
 function out(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});}
@@ -31,7 +31,15 @@ Deno.serve(async(req:Request)=>{
   const sb=createClient(Deno.env.get("SUPABASE_URL")!,secret,{auth:{persistSession:false}});
   if(api==="admin_report"){
    const days=Number(body.days??7);if(![1,7,30].includes(days))return out({error:"invalid_days"},400);
-   const {data,error}=await sb.rpc("lead_map_admin_report_v1",{p_days:days});return error?out({error:"report_unavailable"},500):out(data);
+   const {data,error}=await sb.rpc("lead_map_admin_report_v2",{p_days:days});return error?out({error:"report_unavailable"},500):out(data);
+  }
+  if(api==="admin_import_companies"){
+   let rows;try{rows=normalizeCompanies(body)}catch(e){return out({error:String((e as Error).message)},400)}
+   const {data,error}=await sb.rpc("lead_map_import_companies_v1",{p_rows:rows});return error?out({error:"import_unavailable"},500):out(data);
+  }
+  if(api==="admin_companies"){
+   const offset=Number(body.offset??0);if(!Number.isInteger(offset)||offset<0)return out({error:"invalid_page"},400);
+   const {data,error}=await sb.rpc("lead_map_list_companies_v1",{p_limit:500,p_offset:offset});return error?out({error:"list_unavailable"},500):out(data);
   }
   if(api==="admin_timeline"){
    if(!uuid.test(String(body.visit_id||"")))return out({error:"invalid_visit"},400);

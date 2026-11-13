@@ -46,3 +46,12 @@ export async function registerConversion(req:Request,b:any,sb:any,accessHash:str
  const state=await deliverChat(sb,request_id,webhook);
  return {status:200,body:{ok:true,request_id,chat_status:state||row.chat_state,email_acknowledged:!!row.email_ack_at}};
 }
+
+export function normalizeCompanies(b:any){
+ if(!Array.isArray(b.rows)||!b.rows.length||b.rows.length>500)throw Error('invalid_companies');
+ return b.rows.map((r:any,i:number)=>{
+  const name=typeof r?.company_name==='string'?r.company_name.trim():'',email=typeof r?.recipient_email==='string'?r.recipient_email.trim().toLowerCase():'';
+  if(!name||name.length>120||/[\u0000-\u001f]/.test(name)||email.length>254||!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}$/.test(email))throw Error('invalid_row_'+(i+1));
+  return {company_name:name,recipient_email:email};
+ });
+}
