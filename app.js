@@ -33,7 +33,7 @@ function totalsByCity(pref){const m=new Map();currentSummary().filter(x=>!pref||
 function sumKeys(keys){const m=totalsByCity();return keys===null?[...m.values()].reduce((a,b)=>a+b,0):keys.reduce((a,k)=>a+(m.get(k)||0),0)}
 function report(e){if(e.name!=="AbortError")$("searchStatus").textContent=e.message||"読み込めませんでした。再度お試しください。"}
 function run(fn){Promise.resolve().then(fn).catch(report)}
-function setSearchBusy(b){$("go").disabled=b;$("go").textContent=b?"地域を確認中…":"このエリアの案件を見る"}
+function setSearchBusy(b){$("go").disabled=b;$("go").textContent=b?"検索中…":"このエリアを検索"}
 function hav(a,b){const R=6371,t=x=>x*Math.PI/180,dlat=t(b.lat-a.lat),dlng=t(b.lng-a.lng);const x=Math.sin(dlat/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dlng/2)**2;return 2*R*Math.asin(Math.sqrt(Math.min(1,x)))}
 async function ensureIndex(){if(geoIndex)return geoIndex;const r=await fetch("assets/geo/index.json");if(!r.ok)throw new Error("地域一覧を取得できませんでした。");geoIndex=await r.json();return geoIndex}
 async function ensureGeo(pref){

@@ -8,12 +8,12 @@
 <meta name="description" content="外壁・雨漏りの見込案件を、都道府県・市区町村から確認できます。">
 <title>案件エリアマップ | madoguchi</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="app.js?v=3"></script>
+<script defer src="app.js?v=4"></script>
 </head>
 <body>
-<header><div class="header-inner"><div><span class="brand">案件エリアマップ</span><span class="brand-company">madoguchi</span></div><span class="header-note">施工会社様向け</span></div></header>
+<header><div class="header-inner"><a href="#" class="brand-lockup" aria-label="madoguchi 案件エリアマップ"><span class="brand-company">madoguchi<span class="brand-dot">.</span></span><span class="brand">案件エリアマップ</span></a><nav class="header-nav" aria-label="ページ内メニュー"><a href="#searchSection">エリア検索</a><a href="#casePanel">案件一覧 <span aria-hidden="true">↓</span></a></nav></div></header>
 <main>
  <section class="hero" aria-label="全国の案件状況">
   <div class="hero-main"><h1>全国の対応可能な見込案件数</h1><div class="hero-number"><strong id="prospectTotal">—</strong><span>件</span></div><p class="breakdown">外壁 <b id="outer">—</b> 件<span>／</span>雨漏り <b id="rain">—</b> 件</p></div>
@@ -21,23 +21,23 @@
   <div class="hero-bottom"><span>2025/12/01以降・最新状態が有効／審査中・重複除外</span><span id="updatedAt">データを取得中</span><button id="refresh" class="text-button" type="button">更新</button></div>
   <details class="metric-note"><summary>有効ユーザー数 <b>8,123</b> <span>件〈別指標〉</span></summary><p>gaiheki+管理画面で2026/11/13に確認した値です。見込案件数とは集計対象が異なります。この値は自動更新ではありません。</p></details>
  </section>
- <section class="search-section" aria-labelledby="search-label">
-  <div class="section-kicker"><span class="step-number">1</span> エリアから案件を探す</div>
-  <h2 id="search-label">まずは、御社の拠点エリアを入力</h2>
+ <section id="searchSection" class="search-section" aria-labelledby="search-label">
+  <p class="section-kicker">拠点エリア検索</p>
+  <h2 id="search-label">近くの案件を探す</h2>
   <form id="searchForm" class="search-row">
-   <label class="sr-only" for="q">都道府県・市区町村</label><input id="q" type="search" inputmode="search" autocomplete="address-level2" placeholder="例：岡山県、岡山市北区、横浜市">
-   <label class="sr-only" for="radius">周辺の距離</label><select id="radius"><option value="20">20km圏内</option><option value="40">40km圏内</option></select>
-   <label class="sr-only" for="service">案件の種別</label><select id="service"><option value="all">外壁＋雨漏り</option><option value="gaiheki">外壁</option><option value="amamori">雨漏り</option></select>
-   <button id="go" class="primary" type="submit">このエリアの案件を見る</button>
+   <div class="search-field location-field"><label for="q">御社の拠点エリア</label><div class="search-input-wrap"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.6"/></svg><input id="q" type="search" inputmode="search" autocomplete="address-level2" placeholder="都道府県・市区町村を入力"></div></div>
+   <div class="search-field"><label for="radius">検索範囲</label><select id="radius"><option value="20">20km圏内</option><option value="40">40km圏内</option></select></div>
+   <div class="search-field"><label for="service">案件の種類</label><select id="service"><option value="all">外壁＋雨漏り</option><option value="gaiheki">外壁</option><option value="amamori">雨漏り</option></select></div>
+   <button id="go" class="primary" type="submit">このエリアを検索</button>
   </form>
-  <p class="search-help">都道府県で県内全域、市区町村で周辺20km／40kmを確認できます。</p>
+  <p class="search-help">入力例：岡山県、岡山市北区、横浜市、世田谷区</p>
   <div id="searchStatus" role="status" aria-live="polite"></div><div id="candidates" class="candidates"></div>
  </section>
  <section id="areaSummary" class="area-summary" aria-live="polite">
   <div><h2 id="areaEyebrow">全国の対応可能な見込案件</h2><div class="area-number"><strong id="areaBig">—</strong><span>件</span></div><p id="areaCopy">地域を選ぶと、この地域の案件をまとめて確認できます。</p></div>
-  <a id="jumpList" href="#casePanel" class="outline-light"><span>下の案件一覧を見る <span aria-hidden="true">↓</span></span><small>具体的な工事内容・物件情報を確認</small></a>
+  <a id="jumpList" href="#casePanel" class="outline-light"><span>案件一覧を見る</span><span class="link-arrow" aria-hidden="true">↓</span></a>
  </section>
- <p class="list-location-note"><span>案件の詳細は、地図の下に掲載しています。</span><a href="#casePanel">一覧へ移動 ↓</a></p>
+ <div class="list-location-note"><span>地図で地域を確認。具体的な案件は、その下の一覧へ。</span><a href="#casePanel">案件一覧へ <span aria-hidden="true">↓</span></a></div>
  <section class="map-section" aria-label="地域別の案件マップ">
   <div class="map-toolbar"><nav aria-label="現在の地域"><button id="japan" type="button" class="text-button">全国</button><span id="breadcrumb"></span></nav><span id="mapHint">都道府県を選択</span></div>
   <div id="map" aria-label="案件数を表示した日本地図"></div>
@@ -47,13 +47,13 @@
   <details class="map-note"><summary>表示・集計について</summary><p>地図の数字は実際の見込案件の集計です。距離検索は市区町村の代表座標による目安です。紹介可否はお問い合わせ時に確認します。</p><p>地理データ：<a href="https://github.com/code4fukui/localgovjp" target="_blank" rel="noopener noreferrer">localgovjp（CC0）</a></p></details>
  </section>
  <section id="casePanel" class="panel" aria-labelledby="title">
-  <div class="panel-head"><div><div class="section-kicker"><span class="step-number">2</span> 案件の内容を確認</div><h2 id="title">全国の案件一覧</h2><p id="sub">新しい案件から表示します</p></div><span class="sort-label">受付日の新しい順</span></div>
+  <div class="panel-head"><div><h2 id="title">全国の案件一覧</h2><p id="sub">新しい案件から表示します</p></div><span class="sort-label">受付日の新しい順</span></div>
   <div id="list" class="list" aria-busy="true"><div class="empty">案件データを取得しています…</div></div>
   <div class="pagination"><p id="pageStatus" role="status"></p><button id="loadMore" type="button" hidden>さらに50件表示</button></div>
  </section>
- <section class="contact-section"><h2>対応エリアや案件についてご相談ください</h2><p>気になる案件は、各案件の「この案件に対応したい」からお問い合わせいただけます。</p><a id="generalConsult" class="action main" href="mailto:t.kamei@madoguchi.inc">案件について相談する</a></section>
+ <section class="contact-section"><h2>対応エリアや案件のご相談</h2><p>気になる案件や、対応できるエリアについて。担当者が個別にご案内します。</p><a id="generalConsult" class="action main" href="mailto:t.kamei@madoguchi.inc">案件について相談する</a></section>
 </main>
-<nav id="stickyListNav" class="sticky-list-nav" aria-label="案件一覧への移動" hidden><div><span>このエリアの見込案件</span><b id="stickyListCount">—</b></div><a href="#casePanel">案件一覧を見る <span aria-hidden="true">↓</span></a></nav>
+<nav id="stickyListNav" class="sticky-list-nav" aria-label="案件一覧への移動" hidden><div><span>選択エリアの見込案件</span><b id="stickyListCount">—</b></div><a href="#casePanel">案件一覧へ <span aria-hidden="true">↓</span></a></nav>
 <footer>電話番号は下4桁を非表示にしています。表示情報の転載・転送は禁止します。<span>madoguchi株式会社</span></footer>
 <noscript><p class="empty">この画面を利用するにはJavaScriptを有効にしてください。</p></noscript>
 </body>
