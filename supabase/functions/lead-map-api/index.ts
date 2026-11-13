@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 import { ACCESS_HASH } from "./access-config.ts";
+import { contactConfig, submitContact } from "./contact.ts";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-lead-map-key","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
 async function sha256Hex(input:string){const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(input));return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,"0")).join("");}
 function out(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});}
@@ -7,7 +8,9 @@ Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
  if(!["GET","POST"].includes(req.method))return out({error:"method_not_allowed"},405);
  try{
-  const url=new URL(req.url),token=req.headers.get("x-lead-map-key")||url.searchParams.get("k")||"";
+  const url=new URL(req.url);
+  if(req.method==="GET"&&url.searchParams.get("api")==="contact_config")return out(contactConfig());
+  const token=req.headers.get("x-lead-map-key")||url.searchParams.get("k")||"";
   if(!token||await sha256Hex(token)!==ACCESS_HASH)return out({error:"forbidden"},403);
   const text=req.method==="POST"?await req.text():"{}";
   if(text.length>160000)return out({error:"request_too_large"},413);
@@ -23,6 +26,8 @@ Deno.serve(async(req:Request)=>{
   const secret=secrets.default||Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!secret)return out({error:"server_config"},500);
   const sb=createClient(Deno.env.get("SUPABASE_URL")!,secret,{auth:{persistSession:false}});
+  if(api==="contact_config")return out(contactConfig());
+  if(api==="contact_submit"){const result=await submitContact(req,body,sb,ACCESS_HASH,sha256Hex);return out(result.body,result.status);}
   const common={p_since:"2025-11-30T15:00:00.000Z",p_services:services,p_as_of:asOf.toISOString()};
   if(["bootstrap","summary","metrics"].includes(api)){
    const {data,error}=await sb.rpc("lead_map_bootstrap_v2",common);

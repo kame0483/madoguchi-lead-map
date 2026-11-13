@@ -2,8 +2,9 @@
 const API="https://mhlrawabzltuauramxps.supabase.co/functions/v1/lead-map-api";
 const params=new URLSearchParams(location.search);
 const TOKEN=params.get("k")||"";
-const CALENDAR_URL=""; // Set the confirmed HTTPS booking URL here.
-const CONTACT_EMAIL="t.kamei@madoguchi.inc";
+const CALENDAR_URL="https://calendar.app.google/mRRBUfa9pHoPJVxeA";
+const CONTACT_EMAIL="info@gaihekiplus.com";
+const contactCases=new Map();
 const PAGE_SIZE=50;
 const $=id=>document.getElementById(id);
 const fmt=n=>new Intl.NumberFormat("ja-JP").format(Number(n||0));
@@ -96,7 +97,7 @@ if(typeof window!=="undefined"){
 function setArea(label,count,copy){$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。下の案件一覧で、具体的な工事内容を確認できます。";$("stickyListCount").textContent=fmt(count)+"件";updateListNav()}
 function updateURL(){const u=new URL(location.href);["pref","city","r","service","area"].forEach(k=>u.searchParams.delete(k));if(view.pref)u.searchParams.set("pref",view.pref);if(view.city)u.searchParams.set("city",view.city);if(view.kind==="radius")u.searchParams.set("r",view.radius);if(view.kind==="city")u.searchParams.set("area","city");if(service!=="all")u.searchParams.set("service",service);history.replaceState(null,"",u)}
 function beginView(next){
- generation++;pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
+ generation++;contactCases.clear();pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
  $("searchStatus").textContent="";$("candidates").replaceChildren();$("list").innerHTML='<div class="empty">案件を読み込んでいます…</div>';$("pageStatus").textContent="";$("loadMore").hidden=true;$("list").setAttribute("aria-busy","true");
  $("title").textContent=next.label+"の案件一覧";$("sub").textContent="全"+fmt(pageTotal)+"件・50件ずつ表示";$("prefSelect").value=next.pref||"";$("breadcrumb").textContent=next.label==="全国"?"":"／ "+next.label;setArea(next.label,pageTotal);updateURL();return generation;
 }
@@ -231,13 +232,14 @@ function responseMail(c,type){
 function isNewCase(c){const d=new Date(c.effective_at||c.inquired_at||c.received_at);const age=new Date(snapshot||Date.now()).getTime()-d.getTime();return Number.isFinite(age)&&age>=0&&age<=3*86400000}
 function consultLink(c){return /^https:\/\//.test(CALENDAR_URL)?CALENDAR_URL:responseMail(c,"相談")}
 function cardHTML(c){
+ contactCases.set(String(c.case_id),{case_id:String(c.case_id),pref:c.pref,city:c.city,service_code:c.service_code});
  const date=dateText(c.effective_at||c.inquired_at||c.received_at),badge=isNewCase(c)?'<span class="new-badge">新着</span>':'',target=CALENDAR_URL?' target="_blank" rel="noopener noreferrer"':'';
  const postal=c.postal_code?'〒'+c.postal_code+' ':'';
  const address=String(c.address||'').replace(/^〒?\s*[0-9]{3}-?[0-9]{4}\s*/,"");
  return '<article class="card"><div class="top"><div><div class="city">'+esc(c.pref)+' '+esc(c.city)+badge+'</div><div class="meta">'+esc(date)+' 受付</div></div><span class="badge">'+serviceLabel(c.service_code)+'</span></div>'+
  '<div class="customer-line"><span>'+esc(c.customer_surname?c.customer_surname+'様':'お客様')+'</span>'+(c.masked_phone?'<span class="phone">'+esc(c.masked_phone)+'</span>':'')+'</div>'+
  '<div class="address">'+esc(postal)+esc(address)+'</div>'+caseBody(c)+
- '<div class="actions"><a class="action main" href="'+esc(responseMail(c,"対応"))+'">この案件に対応したい</a><a class="action"'+target+' href="'+esc(consultLink(c))+'">案件について相談する</a></div></article>';
+ '<div class="actions"><button type="button" class="action main" data-contact-action="respond" data-contact-id="'+esc(c.case_id)+'">この案件に対応したい</button><button type="button" class="action" data-contact-action="conditions" data-contact-id="'+esc(c.case_id)+'">条件を聞きたい</button></div></article>';
 }
 function nearestBox(center,b){return {lat:Math.max(b[0],Math.min(b[2],center.lat)),lng:Math.max(b[1],Math.min(b[3],center.lng))}}
 async function showRadius(pref,city,radius){
@@ -308,7 +310,7 @@ $("prefSelect").onchange=function(){if(snapshot)run(()=>this.value?showPref(this
 $("loadMore").onclick=()=>run(()=>loadPage());
 $("refresh").onclick=()=>run(bootstrap);
 Object.keys(PREF_CENTERS).forEach(pref=>{const o=document.createElement('option');o.value=pref;o.textContent=pref;$("prefSelect").append(o)});
-if(CALENDAR_URL&&/^https:\/\//.test(CALENDAR_URL)){$("generalConsult").href=CALENDAR_URL;$("generalConsult").target='_blank';$("generalConsult").rel='noopener noreferrer'}
+
 if(['gaiheki','amamori'].includes(params.get('service'))){service=params.get('service');$("service").value=service}
 const initialPref=params.get('pref'),initialCity=params.get('city');
 if(Object.hasOwn(PREF_CENTERS,initialPref)){
