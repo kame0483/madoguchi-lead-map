@@ -122,6 +122,8 @@ main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.9fr);gap:1
 </section>
 
 <div class="stats">
+  <div class="stat"><b id="todayCount">-</b><span>本日追加</span></div>
+  <div class="stat"><b id="last7Count">-</b><span>直近7日</span></div>
   <div class="stat"><b>8,123</b><span>有効ユーザー数</span></div>
   <div class="stat"><b id="outer">-</b><span>外壁・見込案件</span></div>
   <div class="stat"><b id="rain">-</b><span>雨漏り・見込案件</span></div>
@@ -405,7 +407,9 @@ document.getElementById("service").onchange=function(){service=this.value;curren
 (async()=>{
   try{
     if(!TOKEN)throw new Error("このURLには閲覧キーがありません");
-    const s=await call({api:"summary"});summaries=s.rows||[];
+    const [s,m]=await Promise.all([call({api:"summary"}),call({api:"metrics"})]);summaries=s.rows||[];
+    document.getElementById("todayCount").textContent=fmt(m.today||0);
+    document.getElementById("last7Count").textContent=fmt(m.last7||0);
     let o=0,r=0;
     summaries.forEach(x=>{if(x.service_code==="gaiheki")o+=Number(x.case_count||0);if(x.service_code==="amamori")r+=Number(x.case_count||0)});
     document.getElementById("outer").textContent=fmt(o);
