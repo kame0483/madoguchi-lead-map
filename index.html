@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>案件エリアマップ | madoguchi</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:#f4f6fa;color:#172033}
+header{background:#fff;border-bottom:1px solid #e4e8ef;padding:16px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:20px}.muted{font-size:12px;color:#667085}.controls{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+input,select,button{border:1px solid #d0d5dd;border-radius:9px;padding:10px 11px;background:#fff;font-size:14px}
+button{cursor:pointer}.primary{background:#111827;color:#fff;border-color:#111827}
+.stats{display:flex;gap:10px;padding:12px 14px;overflow:auto}
+.stat{min-width:150px;background:#fff;border:1px solid #e4e8ef;border-radius:12px;padding:10px 14px}
+.stat b{display:block;font-size:21px}.stat span{font-size:12px;color:#667085}
+main{display:grid;grid-template-columns:1.55fr .95fr;gap:12px;padding:0 12px 12px;height:calc(100vh - 145px)}
+#map{border-radius:14px;border:1px solid #e4e8ef;background:#e9edf5}
+.panel{background:#fff;border:1px solid #e4e8ef;border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.panel-head{padding:14px 15px;border-bottom:1px solid #edf0f4}
+.panel-head h2{margin:0 0 4px;font-size:16px}.panel-head p{margin:0;font-size:12px;color:#667085}
+.list{overflow:auto;padding:10px}.card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:9px}
+.top{display:flex;justify-content:space-between;gap:8px}.city{font-weight:700}
+.badge{font-size:11px;background:#eef2ff;color:#3146a8;padding:3px 7px;border-radius:999px}
+.meta{font-size:12px;color:#667085;margin-top:4px}.address{font-size:13px;margin-top:8px}
+.detail{background:#f7f8fb;border-radius:8px;padding:8px;margin-top:8px;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.empty{padding:40px 15px;text-align:center;color:#667085}
+.foot{font-size:11px;color:#7b5b00;background:#fff8dd;border-top:1px solid #eee0a6;padding:7px 14px}
+.error{max-width:620px;margin:80px auto;padding:24px;border:1px solid #fecaca;background:#fff;border-radius:14px}
+@media(max-width:900px){main{grid-template-columns:1fr;height:auto}#map{height:56vh}.panel{min-height:46vh}.controls{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+<div><div class="brand">直近6ヶ月 案件エリアマップ</div><div class="muted">外壁・雨漏りの実案件データ / 電話・メール非表示</div></div>
+<div class="controls">
+<input id="q" placeholder="市区町村 例：世田谷区">
+<select id="radius"><option value="20">20km圏内</option><option value="40">40km圏内</option></select>
+<select id="service"><option value="all">外壁＋雨漏り</option><option value="gaiheki">外壁</option><option value="amamori">雨漏り</option></select>
+<button id="go" class="primary">検索</button>
+</div>
+</header>
+<div class="stats">
+<div class="stat"><b id="all">-</b><span>直近6ヶ月 合計</span></div>
+<div class="stat"><b id="outer">-</b><span>外壁</span></div>
+<div class="stat"><b id="rain">-</b><span>雨漏り</span></div>
+<div class="stat"><b id="area">-</b><span>選択エリア内</span></div>
+<div class="stat"><b>準備中</b><span>水回り連携</span></div>
+</div>
+<main>
+<div id="map"></div>
+<section class="panel">
+<div class="panel-head"><h2 id="title">地図上のエリアを選択してください</h2><p id="sub">市区町村ごとの件数を表示しています</p></div>
+<div id="list" class="list"><div class="empty">地図の数字をクリックするか、市区町村を検索してください。</div></div>
+</section>
+</main>
+<div class="foot">本画面は対応可否の確認用です。顧客の電話番号・メールアドレスは表示していません。表示情報の転載・転送は禁止します。</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const API="https://mhlrawabzltuauramxps.supabase.co/functions/v1/lead-map-api";
+const TOKEN=new URLSearchParams(location.search).get("k")||"";
+const map=L.map("map").setView([36.3,138.2],5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"&copy; OpenStreetMap"}).addTo(map);
+const layer=L.layerGroup().addTo(map);
+let summaries=[],geo=[],service="all";
+
+const fmt=n=>new Intl.NumberFormat("ja-JP").format(Number(n||0));
+const norm=s=>String(s||"").replace(/ヶ/g,"ケ").replace(/　/g,"").trim();
+const key=(p,c)=>p+"|"+norm(c);
+
+function cityName(c){return norm(String(c.city||"")+String(c.ward||""))}
+function flatten(d){
+  const a=[];
+  (d.data||[]).forEach(p=>(p.cities||[]).forEach(c=>{
+    if(c.point&&c.point.length===2)a.push({pref:p.pref,city:cityName(c),lng:c.point[0],lat:c.point[1]});
+  }));
+  return a;
+}
+function activeSummary(){
+  const m=new Map();
+  summaries.forEach(x=>{
+    if(service!=="all"&&x.service_code!==service)return;
+    const k=key(x.pref,x.city),o=m.get(k)||{pref:x.pref,city:norm(x.city),count:0};
+    o.count+=Number(x.case_count||0);m.set(k,o);
+  });
+  return m;
+}
+function findGeo(pref,city){
+  city=norm(city);
+  return geo.find(g=>g.pref===pref&&g.city===city)||
+         geo.find(g=>g.pref===pref&&(g.city.includes(city)||city.includes(g.city)));
+}
+function hav(a,b){
+  const R=6371,t=x=>x*Math.PI/180,dlat=t(b.lat-a.lat),dlng=t(b.lng-a.lng);
+  const x=Math.sin(dlat/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dlng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+async function call(params){
+  if(!TOKEN)throw new Error("missing access key");
+  const u=new URL(API);u.searchParams.set("k",TOKEN);
+  Object.entries(params).forEach(([k,v])=>{if(v!=null)u.searchParams.set(k,String(v))});
+  const r=await fetch(u);if(!r.ok)throw new Error("API "+r.status);return r.json();
+}
+function draw(){
+  layer.clearLayers();
+  activeSummary().forEach(s=>{
+    const g=findGeo(s.pref,s.city);if(!g)return;
+    const rad=Math.max(7,Math.min(22,5+Math.sqrt(s.count)*1.2));
+    const marker=L.circleMarker([g.lat,g.lng],{radius:rad,color:"#344054",weight:1,fillColor:"#fff",fillOpacity:.94});
+    marker.bindTooltip(s.city+" "+fmt(s.count)+"件");
+    marker.on("click",()=>select([key(s.pref,s.city)],s.city+"の案件"));
+    marker.addTo(layer);
+  });
+}
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const label=s=>s==="amamori"?"雨漏り":"外壁";
+function detail(c){
+  const p=[];
+  Object.entries(c.detail||{}).forEach(([k,v])=>{if(v!==""&&v!=null)p.push(k+"："+(typeof v==="string"?v:JSON.stringify(v)))});
+  if(c.items&&c.items!=="null")p.push("依頼項目："+(typeof c.items==="string"?c.items:JSON.stringify(c.items)));
+  return p.length?'<div class="detail">'+esc(p.join("\n"))+"</div>":"";
+}
+function render(a){
+  const el=document.getElementById("list");
+  if(!a.length){el.innerHTML='<div class="empty">該当案件はありません。</div>';return}
+  el.innerHTML=a.map(c=>{
+    const dt=c.inquired_at||new Date(c.received_at).toLocaleString("ja-JP");
+    return '<div class="card"><div class="top"><div><div class="city">'+esc(c.pref)+" "+esc(c.city)+'</div><div class="meta">'+esc(dt)+(c.customer_surname?(" ・ "+esc(c.customer_surname)+"様"):"")+'</div></div><span class="badge">'+label(c.service_code)+'</span></div><div class="address">'+esc(c.postal_code?("〒"+c.postal_code+" "):"")+esc(c.address||"")+"</div>"+detail(c)+"</div>";
+  }).join("");
+}
+async function select(keys,title){
+  document.getElementById("title").textContent=title;
+  document.getElementById("sub").textContent="直近6ヶ月 / "+keys.length+"市区町村";
+  const services=service==="all"?"gaiheki,amamori":service;
+  const d=await call({api:"cases",keys:keys.join(","),services});
+  document.getElementById("area").textContent=fmt(d.total||0);
+  render(d.cases||[]);
+}
+async function search(){
+  const q=norm(document.getElementById("q").value);if(!q)return;
+  const cand=geo.filter(g=>g.city.includes(q));
+  if(!cand.length){alert("市区町村が見つかりません");return}
+  const c=cand[0],r=Number(document.getElementById("radius").value),m=activeSummary(),keys=[];
+  geo.forEach(g=>{if(hav(c,g)<=r&&m.has(key(g.pref,g.city)))keys.push(key(g.pref,g.city))});
+  map.setView([c.lat,c.lng],r===20?9:8);
+  await select(keys,c.city+"から"+r+"km圏内");
+}
+document.getElementById("go").onclick=search;
+document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")search()});
+document.getElementById("service").onchange=function(){
+  service=this.value;draw();document.getElementById("area").textContent="-";
+  document.getElementById("list").innerHTML='<div class="empty">地図または検索からエリアを選択してください。</div>';
+};
+
+(async()=>{
+  try{
+    if(!TOKEN)throw new Error("このURLには閲覧キーがありません");
+    const [s,g]=await Promise.all([
+      call({api:"summary"}),
+      fetch("https://japanese-addresses-v2.geoloniamaps.com/api/ja.json").then(r=>r.json())
+    ]);
+    summaries=s.rows||[];geo=flatten(g);
+    let o=0,r=0;
+    summaries.forEach(x=>{if(x.service_code==="gaiheki")o+=Number(x.case_count||0);if(x.service_code==="amamori")r+=Number(x.case_count||0)});
+    document.getElementById("outer").textContent=fmt(o);
+    document.getElementById("rain").textContent=fmt(r);
+    document.getElementById("all").textContent=fmt(o+r);
+    draw();
+  }catch(e){
+    console.error(e);
+    document.querySelector("main").innerHTML='<div class="error"><b>画面を読み込めませんでした。</b><p>閲覧URLが正しいか確認してください。</p></div>';
+  }
+})();
+</script>
+</body></html>
