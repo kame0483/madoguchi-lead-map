@@ -8,10 +8,10 @@
 <meta name="description" content="外壁・雨漏りの見込案件を、都道府県・市区町村から確認できます。">
 <title>案件エリアマップ | madoguchi</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="app.js?v=9"></script>
-<script defer src="contact.js?v=9"></script>
+<script defer src="app.js?v=10"></script>
+<script defer src="contact.js?v=10"></script>
 </head>
 <body>
 <header><div class="header-inner"><a href="#" class="brand-lockup" aria-label="madoguchi 案件エリアマップ"><span class="brand-company">madoguchi<span class="brand-dot">.</span></span><span class="brand">案件エリアマップ</span></a><nav class="header-nav" aria-label="ページ内メニュー"><a href="#searchSection">エリア検索</a><a href="#casePanel">案件一覧 <span aria-hidden="true">↓</span></a></nav></div></header>
@@ -73,15 +73,14 @@
   <p id="contactCase" class="contact-context"></p>
   <p id="contactLoading" class="form-status" role="status">受付状況を確認しています…</p>
   <div id="contactUnavailable" class="contact-unavailable" hidden><p>メールでの資料請求・ご相談、またはWeb打ち合わせのご予約もご利用いただけます。</p><a id="contactFallbackMail" href="mailto:info@gaihekiplus.com">メールで問い合わせる ↗</a></div>
-  <form id="contactForm" class="contact-form" hidden>
+  <form id="contactForm" class="contact-form" novalidate hidden>
    <div class="form-field"><label for="contactCompany">会社名 <span>必須</span></label><input id="contactCompany" name="company_name" autocomplete="organization" maxlength="120" placeholder="例：株式会社〇〇リフォーム" required></div>
    <div class="form-field"><label for="contactName">ご担当者名 <span>必須</span></label><input id="contactName" name="contact_name" autocomplete="name" maxlength="80" placeholder="例：山田 太郎" required></div>
    <div class="form-field"><label for="contactPhone">御社のお電話番号 <span>必須</span></label><input id="contactPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" placeholder="例：090-1234-5678" required></div>
    <div class="form-field"><label for="contactEmail">メールアドレス <span>必須</span></label><input id="contactEmail" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="例：info@example.co.jp" required></div>
-   <fieldset class="callback-fields"><legend>電話に出られる日時 <small>日本時間・任意</small></legend><div class="callback-grid"><div class="form-field"><label for="contactDate">希望日</label><input id="contactDate" name="preferred_date" type="date"></div><div class="form-field"><label for="contactWindow">希望時間帯</label><select id="contactWindow" name="preferred_window"><option value="any">指定なし</option><option value="09:00-12:00">9:00〜12:00</option><option value="12:00-15:00">12:00〜15:00</option><option value="15:00-18:00">15:00〜18:00</option></select></div></div><p class="field-help">未指定の場合は、担当者から順次ご連絡します。確定した日時でのWeb打ち合わせをご希望の方は、下の予約ページをご利用ください。</p></fieldset>
-   <div class="form-honeypot" aria-hidden="true"><label for="contactFax">FAX住所</label><input id="contactFax" name="fax_address" tabindex="-1" autocomplete="off"></div>
+   <fieldset class="callback-fields"><legend>電話に出られる日時 <small>日本時間・任意</small></legend><div class="form-field callback-date"><label for="contactDate">希望日</label><input id="contactDate" name="preferred_date" type="date"></div><fieldset class="callback-times"><legend>希望時間帯 <small>9:00〜21:00・1時間ごと</small></legend><label class="time-choice time-any"><input type="radio" name="callback_time" value="any" checked><span>時間帯の指定なし</span></label><div class="time-grid"><label class="time-choice"><input type="radio" name="callback_time" value="09:00-10:00"><span>9:00–10:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="10:00-11:00"><span>10:00–11:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="11:00-12:00"><span>11:00–12:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="12:00-13:00"><span>12:00–13:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="13:00-14:00"><span>13:00–14:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="14:00-15:00"><span>14:00–15:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="15:00-16:00"><span>15:00–16:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="16:00-17:00"><span>16:00–17:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="17:00-18:00"><span>17:00–18:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="18:00-19:00"><span>18:00–19:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="19:00-20:00"><span>19:00–20:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="20:00-21:00"><span>20:00–21:00</span></label></div></fieldset><p class="field-help">折り返し電話の希望日時です。確定予約ではありません。未指定の場合は、担当者から順次ご連絡します。</p></fieldset>
    <p class="field-help">ご入力内容はFormSubmitを経由して当社へ通知し、本件のご案内と日程調整に使用します。送信だけで契約や案件購入は確定しません。</p>
-   <p id="contactError" class="form-error" role="alert" hidden></p>
+   <p id="contactError" class="form-error" role="alert" tabindex="-1" hidden></p>
    <button id="contactSubmit" class="primary" type="submit">この内容で電話連絡を依頼する</button>
   </form>
   <section id="contactSuccess" class="contact-success" aria-live="polite" hidden><h3 id="contactSuccessHeading">ご依頼を受け付けました</h3><p id="contactSuccessCopy">ご入力いただいた電話番号へ、弊社の担当者からご連絡いたします。</p><p id="contactReceiptNote"></p><dl><dt>受付番号</dt><dd id="contactRequestNumber"></dd><dt>お電話番号</dt><dd id="contactSavedPhone"></dd><dt>電話可能な日時</dt><dd id="contactSavedTime"></dd></dl><button id="contactRetryMail" type="button" hidden>通知を再確認する</button></section>
