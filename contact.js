@@ -17,6 +17,8 @@ function contactNotification(data){
  "電話可能日":data.preferred_window==="now"?"今すぐの連絡を希望":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="now"?"今すぐ":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般"};
 }
 async function contactRequest(data){
+ const registered=await call({api:"conversion_submit",...data,visit_id:window.LeadMapActivity?.id||null});
+ if(registered.email_acknowledged)return {request_id:data.request_id};
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),25000);
  try{
   const response=await fetch(CONTACT_FORM_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(contactNotification(data)),signal:ctrl.signal,cache:"no-store",referrerPolicy:"origin",credentials:"omit"});
@@ -26,6 +28,7 @@ async function contactRequest(data){
   if(result.success!==true&&result.success!=="true"){
    throw new Error("受付結果を確認できませんでした。下のメール窓口、または予約ページをご利用ください。");
   }
+  try{await call({api:"conversion_email_ack",request_id:data.request_id})}catch{}
   return {request_id:data.request_id};
  }catch(e){if(e.name==="AbortError")throw new Error("送信結果を確認できませんでした。再送すると重複する場合があります。お急ぎの場合は下の予約ページをご利用ください。");if(e.name==="TypeError")throw new Error("通信を完了できませんでした。接続状況を確認するか、下のメール窓口・予約ページをご利用ください。");throw e;}finally{clearTimeout(timer)}
 }
@@ -58,6 +61,7 @@ function contactShowError(message){
  error.scrollIntoView({behavior:"auto",block:"center"});error.focus({preventScroll:true});
 }
 function contactShowResult(result,payload){
+ window.LeadMapActivity?.track("conversion",{action:payload.action,case_id:payload.case_id||""});
  const summary={request_id:result.request_id,action:payload.action,preferred_date:payload.preferred_date,preferred_window:payload.preferred_window};
  try{sessionStorage.setItem("lead-map-confirmation",JSON.stringify(summary));}catch{}
  const hash=new URLSearchParams({receipt:result.request_id,intent:payload.action});

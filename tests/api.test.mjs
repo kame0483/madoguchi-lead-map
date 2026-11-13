@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 import {webcrypto,createHash} from 'node:crypto';
 const hash=createHash('sha256').update('qa-token').digest('hex');
 let source=readFileSync(new URL('../supabase/functions/lead-map-api/index.ts',import.meta.url),'utf8').replace(/^import .*;$/gm,'');
-source='const ACCESS_HASH="'+hash+'";\n'+source;
+source='const ACCESS_HASH="'+hash+'";const ADMIN_HASH="'+createHash('sha256').update('qa-admin').digest('hex')+'";\n'+source;
 let handler,invocations=[];
 const context={crypto:webcrypto,TextEncoder,Response,Request,URL,console,Date,createClient:()=>({rpc:async(name,args)=>{invocations.push({name,args});return {data:name==='lead_map_bootstrap_v2'?{rows:[],metrics:{total:0,today:0,last7:0},snapshot:args.p_as_of}:{total:0,cases:[],snapshot:args.p_as_of},error:null}}}),Deno:{env:{get:n=>n==='SUPABASE_SECRET_KEYS'?'{"default":"qa-server-secret"}':n==='SUPABASE_URL'?'https://example.invalid':undefined},serve:fn=>handler=fn}};
 vm.runInNewContext(stripTypeScriptTypes(source),context);
@@ -27,3 +27,7 @@ assert.equal((await handler(request({api:'cases',filters:{recent_days:'7','q:築
 assert.equal((await handler(request({api:'case_filters',keys:[]}))).status,200);assert.equal(invocations.at(-1).name,'lead_map_filter_options_v3');
 for(const filters of [[],{'other':'x'},{recent_days:'999'},{service_code:'mizumawari'},{items:1},Object.fromEntries(Array.from({length:13},(_,i)=>['q:field'+i,'x']))])assert.equal((await handler(request({api:'cases',filters}))).status,400);
 console.log('API: auth, legacy URL, CORS, zero keys, 250 areas and invalid requests passed');
+
+assert.equal((await handler(request({api:'admin_report'}))).status,403,'viewer cannot read analytics');
+assert.equal((await handler(new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json','x-lead-map-admin':'qa-admin'},body:JSON.stringify({api:'admin_report',days:7})}))).status,200);assert.equal(invocations.at(-1).name,'lead_map_admin_report_v1');
+assert.equal((await handler(new Request('https://example.invalid',{method:'GET',headers:{'x-lead-map-admin':'qa-admin'}}))).status,403,'admin key does not grant case API access');

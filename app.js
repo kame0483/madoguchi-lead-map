@@ -98,7 +98,7 @@ if(typeof window!=="undefined"){
 function setArea(label,count,copy){$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。下の案件一覧で、具体的な工事内容を確認できます。";$("stickyListCount").textContent=fmt(count)+"件";updateListNav()}
 function updateURL(){const u=new URL(location.href);["pref","city","r","service","area"].forEach(k=>u.searchParams.delete(k));if(view.pref)u.searchParams.set("pref",view.pref);if(view.city)u.searchParams.set("city",view.city);if(view.kind==="radius")u.searchParams.set("r",view.radius);if(view.kind==="city")u.searchParams.set("area","city");if(service!=="all")u.searchParams.set("service",service);history.replaceState(null,"",u)}
 function beginView(next){
- generation++;contactCases.clear();pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
+ window.LeadMapActivity?.track("area_search",{area:next.label});generation++;contactCases.clear();pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
  $("searchStatus").textContent="";$("candidates").replaceChildren();$("list").innerHTML='<div class="empty">案件を読み込んでいます…</div>';$("pageStatus").textContent="";$("loadMore").hidden=true;$("list").setAttribute("aria-busy","true");
  $("title").textContent=next.label+"の案件一覧";$("sub").textContent="全"+fmt(pageTotal)+"件・10件ずつ表示";$("prefSelect").value=next.pref||"";$("breadcrumb").textContent=next.label==="全国"?"":"／ "+next.label;setArea(next.label,pageTotal);updateURL();if(typeof syncCaseFilterContext==="function")syncCaseFilterContext();return generation;
 }

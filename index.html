@@ -8,11 +8,12 @@
 <meta name="description" content="外壁・雨漏りの見込案件を、都道府県・市区町村から確認できます。">
 <title>案件エリアマップ | madoguchi</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="app.js?v=14"></script>
-<script defer src="case-filters.js?v=14"></script>
-<script defer src="contact.js?v=14"></script>
+<script defer src="app.js?v=15"></script>
+<script defer src="activity.js?v=15"></script>
+<script defer src="case-filters.js?v=15"></script>
+<script defer src="contact.js?v=15"></script>
 </head>
 <body>
 <header><div class="header-inner"><a href="#" class="brand-lockup" aria-label="madoguchi 案件エリアマップ"><span class="brand-company">madoguchi<span class="brand-dot">.</span></span><span class="brand">案件エリアマップ</span></a><nav class="header-nav" aria-label="ページ内メニュー"><a href="#searchSection">エリア検索</a><a href="#casePanel">案件一覧 <span aria-hidden="true">↓</span></a></nav></div></header>
@@ -68,14 +69,14 @@
  </section>
 </main>
 <nav id="stickyListNav" class="sticky-list-nav" aria-label="案件一覧への移動" hidden><div><span>選択エリアの見込案件</span><b id="stickyListCount">—</b></div><a href="#casePanel">案件一覧へ <span aria-hidden="true">↓</span></a></nav>
-<footer>電話番号は下4桁を非表示にしています。表示情報の転載・転送は禁止します。<span>madoguchi株式会社</span></footer>
+<footer>電話番号は下4桁を非表示にしています。表示情報の転載・転送は禁止します。<span>madoguchi株式会社</span><details class="measurement-note"><summary>利用状況の計測について</summary><p>サービス改善とお問い合わせ対応のため、匿名の訪問識別子、表示エリア、ボタン操作、画面を表示して操作している時間を記録します。入力中の氏名・電話・メール、閲覧キー、IPアドレス、画面録画は記録しません。お問い合わせを送信した場合のみ、その受付内容と訪問履歴を関連付けます。</p></details></footer>
 <dialog id="contactDialog" class="contact-dialog" aria-labelledby="contactHeading">
  <div class="dialog-top"><span>madoguchi / お問い合わせ</span><button id="contactClose" class="dialog-close" type="button" aria-label="閉じる">×</button></div>
  <div class="dialog-body">
   <div id="contactIntro"><p id="contactIntent" class="section-kicker">案件についてのご相談</p><h2 id="contactHeading">ありがとうございます！</h2><p class="dialog-intro">このあと弊社の担当者からお電話いたします。<br>御社の電話番号と、ご都合のよい日時をお知らせください。</p><a class="booking-inline" href="https://calendar.app.google/mRRBUfa9pHoPJVxeA" target="_blank" rel="noopener noreferrer">Web打ち合わせの日時を予約する ↗</a></div>
   <p id="contactCase" class="contact-context"></p>
   <p id="contactLoading" class="form-status" role="status">受付状況を確認しています…</p>
-  <div id="contactUnavailable" class="contact-unavailable" hidden><p>メールでの資料請求・ご相談、またはWeb打ち合わせのご予約もご利用いただけます。</p><a id="contactFallbackMail" href="mailto:info@gaihekiplus.com">メールで問い合わせる ↗</a></div>
+  <div id="contactUnavailable" class="contact-unavailable" hidden><p>メールでの資料請求・ご相談、またはWeb打ち合わせのご予約もご利用いただけます。</p><a id="contactFallbackMail" href="mailto:t.kamei@madoguchi.inc">メールで問い合わせる ↗</a></div>
   <form id="contactForm" class="contact-form" novalidate hidden>
    <div class="form-field"><label for="contactCompany">会社名 <span>必須</span></label><input id="contactCompany" name="company_name" autocomplete="organization" maxlength="120" placeholder="例：株式会社〇〇リフォーム" required></div>
    <div class="form-field"><label for="contactName">ご担当者名 <span>必須</span></label><input id="contactName" name="contact_name" autocomplete="name" maxlength="80" placeholder="例：山田 太郎" required></div>

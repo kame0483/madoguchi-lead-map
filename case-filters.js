@@ -45,7 +45,7 @@ $("caseFilterForm").addEventListener("submit",e=>{
  e.preventDefault();const k=$("caseFilterField").value,v=$("caseFilterValue").value;
  if(!k||!v){$("caseFilterStatus").textContent="絞り込む項目と条件を選択してください。";return;}
  if(!Object.hasOwn(caseFilters,k)&&Object.keys(caseFilters).length>=12){$("caseFilterStatus").textContent="条件は12項目まで指定できます。不要な条件を解除してください。";return;}
- caseFilters={...caseFilters,[k]:v};renderActiveCaseFilters();run(reloadFilteredCases);
+ window.LeadMapActivity?.track("filter_apply",{field:k});caseFilters={...caseFilters,[k]:v};renderActiveCaseFilters();run(reloadFilteredCases);
 });
 $("activeCaseFilters").addEventListener("click",e=>{const b=e.target.closest?.("[data-remove-filter]");if(!b)return;delete caseFilters[b.dataset.removeFilter];renderActiveCaseFilters();run(reloadFilteredCases)});
 $("clearCaseFilters").addEventListener("click",()=>{caseFilters={};renderActiveCaseFilters();run(reloadFilteredCases)});
