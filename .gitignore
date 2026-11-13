@@ -1,0 +1,5 @@
+supabase/functions/lead-map-api/access-config.ts
+.openai/
+qa-preview/
+node_modules/
+.env*
