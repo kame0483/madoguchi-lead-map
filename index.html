@@ -9,51 +9,63 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:#f4f6fa;color:#172033}
-header{background:#fff;border-bottom:1px solid #e4e8ef;padding:16px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-.brand{font-weight:800;font-size:20px}.muted{font-size:12px;color:#667085}.controls{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
-input,select,button{border:1px solid #d0d5dd;border-radius:9px;padding:10px 11px;background:#fff;font-size:14px}
-button{cursor:pointer}.primary{background:#111827;color:#fff;border-color:#111827}
-.stats{display:flex;gap:10px;padding:12px 14px;overflow:auto}
-.stat{min-width:150px;background:#fff;border:1px solid #e4e8ef;border-radius:12px;padding:10px 14px}
-.stat b{display:block;font-size:21px}.stat span{font-size:12px;color:#667085}
-main{display:grid;grid-template-columns:1.55fr .95fr;gap:12px;padding:0 12px 12px;height:calc(100vh - 145px)}
+header{background:#fff;border-bottom:1px solid #e4e8ef;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:20px}.muted{font-size:12px;color:#667085;margin-top:3px}
+.controls{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+input,select,button{border:1px solid #d0d5dd;border-radius:9px;padding:9px 11px;background:#fff;font-size:14px}
+button{cursor:pointer}.primary{background:#111827;color:#fff;border-color:#111827}.secondary{background:#fff}
+.stats{display:flex;gap:9px;padding:10px 12px;overflow:auto}
+.stat{min-width:140px;background:#fff;border:1px solid #e4e8ef;border-radius:11px;padding:9px 12px}
+.stat b{display:block;font-size:20px}.stat span{font-size:12px;color:#667085}
+main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.95fr);gap:10px;padding:0 10px 10px;height:calc(100vh - 137px)}
 #map{border-radius:14px;border:1px solid #e4e8ef;background:#e9edf5}
 .panel{background:#fff;border:1px solid #e4e8ef;border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
-.panel-head{padding:14px 15px;border-bottom:1px solid #edf0f4}
+.panel-head{padding:13px 14px;border-bottom:1px solid #edf0f4}
 .panel-head h2{margin:0 0 4px;font-size:16px}.panel-head p{margin:0;font-size:12px;color:#667085}
-.list{overflow:auto;padding:10px}.card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:9px}
-.top{display:flex;justify-content:space-between;gap:8px}.city{font-weight:700}
-.badge{font-size:11px;background:#eef2ff;color:#3146a8;padding:3px 7px;border-radius:999px}
-.meta{font-size:12px;color:#667085;margin-top:4px}.address{font-size:13px;margin-top:8px}
-.detail{background:#f7f8fb;border-radius:8px;padding:8px;margin-top:8px;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.list{overflow:auto;padding:9px}
+.card{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:9px;background:#fff}
+.top{display:flex;justify-content:space-between;gap:8px}.city{font-weight:750;font-size:15px}
+.badge{font-size:11px;background:#eef2ff;color:#3146a8;padding:3px 7px;border-radius:999px;height:max-content}
+.meta{font-size:12px;color:#667085;margin-top:4px}.address{font-size:13px;margin-top:9px;font-weight:600}
+.detail{background:#f8f9fb;border-radius:9px;padding:9px 10px;margin-top:9px;font-size:12px}
+.detail ul{margin:0;padding-left:18px}.detail li{margin:4px 0;line-height:1.5}.detail b{font-weight:700}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.action{border-radius:9px;padding:9px 8px;text-align:center;text-decoration:none;font-size:12px;font-weight:700;border:1px solid #d0d5dd;color:#172033;background:#fff}
+.action.main{background:#111827;color:#fff;border-color:#111827}
 .empty{padding:40px 15px;text-align:center;color:#667085}
-.foot{font-size:11px;color:#7b5b00;background:#fff8dd;border-top:1px solid #eee0a6;padding:7px 14px}
-.error{max-width:620px;margin:80px auto;padding:24px;border:1px solid #fecaca;background:#fff;border-radius:14px}
-@media(max-width:900px){main{grid-template-columns:1fr;height:auto}#map{height:56vh}.panel{min-height:46vh}.controls{margin-left:0}}
+.foot{font-size:11px;color:#7b5b00;background:#fff8dd;border-top:1px solid #eee0a6;padding:6px 12px}
+.loading{opacity:.65;pointer-events:none}
+@media(max-width:900px){main{grid-template-columns:1fr;height:auto}#map{height:55vh}.panel{min-height:46vh}.controls{margin-left:0}.actions{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <header>
-<div><div class="brand">直近6ヶ月 案件エリアマップ</div><div class="muted">外壁・雨漏りの実案件データ / 電話・メール非表示</div></div>
+<div>
+  <div class="brand">直近6ヶ月 案件エリアマップ</div>
+  <div class="muted">外壁・雨漏りの実案件データ / 電話・メール非表示</div>
+</div>
 <div class="controls">
-<input id="q" placeholder="市区町村 例：世田谷区">
-<select id="radius"><option value="20">20km圏内</option><option value="40">40km圏内</option></select>
-<select id="service"><option value="all">外壁＋雨漏り</option><option value="gaiheki">外壁</option><option value="amamori">雨漏り</option></select>
-<button id="go" class="primary">検索</button>
+  <input id="q" placeholder="市区町村 例：岡山市北区">
+  <select id="radius"><option value="20">20km圏内</option><option value="40">40km圏内</option></select>
+  <select id="service"><option value="all">外壁＋雨漏り</option><option value="gaiheki">外壁</option><option value="amamori">雨漏り</option></select>
+  <button id="go" class="primary">検索</button>
+  <button id="reset" class="secondary">全国表示</button>
 </div>
 </header>
+
 <div class="stats">
-<div class="stat"><b id="all">-</b><span>直近6ヶ月 合計</span></div>
-<div class="stat"><b id="outer">-</b><span>外壁</span></div>
-<div class="stat"><b id="rain">-</b><span>雨漏り</span></div>
-<div class="stat"><b id="area">-</b><span>選択エリア内</span></div>
-<div class="stat"><b>準備中</b><span>水回り連携</span></div>
+  <div class="stat"><b id="all">-</b><span>直近6ヶ月 合計</span></div>
+  <div class="stat"><b id="outer">-</b><span>外壁</span></div>
+  <div class="stat"><b id="rain">-</b><span>雨漏り</span></div>
+  <div class="stat"><b id="area">-</b><span>選択エリア内</span></div>
+  <div class="stat"><b>準備中</b><span>水回り連携</span></div>
 </div>
+
 <main>
 <div id="map"></div>
 <section class="panel">
-<div class="panel-head"><h2 id="title">地図上のエリアを選択してください</h2><p id="sub">市区町村ごとの件数を表示しています</p></div>
-<div id="list" class="list"><div class="empty">地図の数字をクリックするか、市区町村を検索してください。</div></div>
+  <div class="panel-head"><h2 id="title">都道府県を選択してください</h2><p id="sub">初期表示は都道府県単位です。クリックすると市区町村を表示します。</p></div>
+  <div id="list" class="list"><div class="empty">地図上の都道府県をクリックするか、市区町村を検索してください。</div></div>
 </section>
 </main>
 <div class="foot">本画面は対応可否の確認用です。顧客の電話番号・メールアドレスは表示していません。表示情報の転載・転送は禁止します。</div>
@@ -62,117 +74,199 @@ main{display:grid;grid-template-columns:1.55fr .95fr;gap:12px;padding:0 12px 12p
 <script>
 const API="https://mhlrawabzltuauramxps.supabase.co/functions/v1/lead-map-api";
 const TOKEN=new URLSearchParams(location.search).get("k")||"";
-const map=L.map("map").setView([36.3,138.2],5);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"&copy; OpenStreetMap"}).addTo(map);
+const TALK_URL="https://calendar.app.google/h9TivYYsAgWruFbg7";
+const CONTACT_EMAIL="t.kamei@madoguchi.inc";
+const JAPAN_BOUNDS=L.latLngBounds([24.0,122.0],[46.5,146.5]);
+const map=L.map("map",{maxBounds:JAPAN_BOUNDS,maxBoundsViscosity:1,minZoom:4,maxZoom:12}).setView([36.2,138.1],5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:"&copy; OpenStreetMap",noWrap:true,bounds:JAPAN_BOUNDS}).addTo(map);
 const layer=L.layerGroup().addTo(map);
-let summaries=[],geo=[],service="all";
 
+const PREF_CENTERS={
+"北海道":[43.06,141.35],"青森県":[40.82,140.74],"岩手県":[39.70,141.15],"宮城県":[38.27,140.87],"秋田県":[39.72,140.10],"山形県":[38.24,140.36],"福島県":[37.75,140.47],
+"茨城県":[36.34,140.45],"栃木県":[36.57,139.88],"群馬県":[36.39,139.06],"埼玉県":[35.86,139.65],"千葉県":[35.61,140.12],"東京都":[35.68,139.69],"神奈川県":[35.45,139.64],
+"新潟県":[37.90,139.02],"富山県":[36.70,137.21],"石川県":[36.59,136.63],"福井県":[36.07,136.22],"山梨県":[35.66,138.57],"長野県":[36.65,138.18],"岐阜県":[35.39,136.72],"静岡県":[34.98,138.38],"愛知県":[35.18,136.91],
+"三重県":[34.73,136.51],"滋賀県":[35.00,135.87],"京都府":[35.01,135.77],"大阪府":[34.69,135.50],"兵庫県":[34.69,135.18],"奈良県":[34.69,135.83],"和歌山県":[34.23,135.17],
+"鳥取県":[35.50,134.24],"島根県":[35.47,133.05],"岡山県":[34.66,133.93],"広島県":[34.40,132.46],"山口県":[34.19,131.47],
+"徳島県":[34.07,134.56],"香川県":[34.34,134.04],"愛媛県":[33.84,132.77],"高知県":[33.56,133.53],
+"福岡県":[33.59,130.40],"佐賀県":[33.25,130.30],"長崎県":[32.75,129.87],"熊本県":[32.79,130.74],"大分県":[33.24,131.61],"宮崎県":[31.91,131.42],"鹿児島県":[31.56,130.56],"沖縄県":[26.21,127.68]
+};
+
+let summaries=[],geo=null,service="all",currentPref=null;
 const fmt=n=>new Intl.NumberFormat("ja-JP").format(Number(n||0));
 const norm=s=>String(s||"").replace(/ヶ/g,"ケ").replace(/　/g,"").trim();
 const key=(p,c)=>p+"|"+norm(c);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const serviceLabel=s=>s==="amamori"?"雨漏り":"外壁";
 
-function cityName(c){return norm(String(c.city||"")+String(c.ward||""))}
-function flatten(d){
-  const a=[];
-  (d.data||[]).forEach(p=>(p.cities||[]).forEach(c=>{
-    if(c.point&&c.point.length===2)a.push({pref:p.pref,city:cityName(c),lng:c.point[0],lat:c.point[1]});
-  }));
-  return a;
-}
-function activeSummary(){
-  const m=new Map();
-  summaries.forEach(x=>{
-    if(service!=="all"&&x.service_code!==service)return;
-    const k=key(x.pref,x.city),o=m.get(k)||{pref:x.pref,city:norm(x.city),count:0};
-    o.count+=Number(x.case_count||0);m.set(k,o);
-  });
-  return m;
-}
-function findGeo(pref,city){
-  city=norm(city);
-  return geo.find(g=>g.pref===pref&&g.city===city)||
-         geo.find(g=>g.pref===pref&&(g.city.includes(city)||city.includes(g.city)));
-}
-function hav(a,b){
-  const R=6371,t=x=>x*Math.PI/180,dlat=t(b.lat-a.lat),dlng=t(b.lng-a.lng);
-  const x=Math.sin(dlat/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dlng/2)**2;
-  return 2*R*Math.asin(Math.sqrt(x));
-}
 async function call(params){
   if(!TOKEN)throw new Error("missing access key");
   const u=new URL(API);u.searchParams.set("k",TOKEN);
   Object.entries(params).forEach(([k,v])=>{if(v!=null)u.searchParams.set(k,String(v))});
   const r=await fetch(u);if(!r.ok)throw new Error("API "+r.status);return r.json();
 }
-function draw(){
-  layer.clearLayers();
-  activeSummary().forEach(s=>{
-    const g=findGeo(s.pref,s.city);if(!g)return;
-    const rad=Math.max(7,Math.min(22,5+Math.sqrt(s.count)*1.2));
-    const marker=L.circleMarker([g.lat,g.lng],{radius:rad,color:"#344054",weight:1,fillColor:"#fff",fillOpacity:.94});
-    marker.bindTooltip(s.city+" "+fmt(s.count)+"件");
-    marker.on("click",()=>select([key(s.pref,s.city)],s.city+"の案件"));
-    marker.addTo(layer);
-  });
+function currentSummary(){
+  return summaries.filter(x=>service==="all"||x.service_code===service);
 }
-const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-const label=s=>s==="amamori"?"雨漏り":"外壁";
-function detail(c){
-  const p=[];
-  Object.entries(c.detail||{}).forEach(([k,v])=>{if(v!==""&&v!=null)p.push(k+"："+(typeof v==="string"?v:JSON.stringify(v)))});
-  if(c.items&&c.items!=="null")p.push("依頼項目："+(typeof c.items==="string"?c.items:JSON.stringify(c.items)));
-  return p.length?'<div class="detail">'+esc(p.join("\n"))+"</div>":"";
+function prefectureTotals(){
+  const m=new Map();
+  currentSummary().forEach(x=>m.set(x.pref,(m.get(x.pref)||0)+Number(x.case_count||0)));
+  return m;
+}
+function cityTotals(pref){
+  const m=new Map();
+  currentSummary().filter(x=>x.pref===pref).forEach(x=>m.set(norm(x.city),(m.get(norm(x.city))||0)+Number(x.case_count||0)));
+  return m;
+}
+function markerRadius(n){return Math.max(8,Math.min(24,7+Math.sqrt(n)*.9))}
+function addMarker(lat,lng,label,count,click){
+  const marker=L.circleMarker([lat,lng],{radius:markerRadius(count),color:"#344054",weight:1,fillColor:"#fff",fillOpacity:.96});
+  marker.bindTooltip(label+" "+fmt(count)+"件",{direction:"top"});
+  marker.on("click",click);
+  marker.addTo(layer);
+}
+function showJapan(){
+  currentPref=null;layer.clearLayers();map.setView([36.2,138.1],5);
+  const totals=prefectureTotals();
+  totals.forEach((count,pref)=>{
+    const p=PREF_CENTERS[pref];if(!p)return;
+    addMarker(p[0],p[1],pref,count,()=>showPref(pref));
+  });
+  document.getElementById("title").textContent="都道府県を選択してください";
+  document.getElementById("sub").textContent="クリックすると市区町村ごとの案件数を表示します";
+  document.getElementById("area").textContent="-";
+  document.getElementById("list").innerHTML='<div class="empty">都道府県を選ぶと、その地域の市区町村と案件を確認できます。</div>';
+}
+async function ensureGeo(){
+  if(geo)return geo;
+  const r=await fetch("https://japanese-addresses-v2.geoloniamaps.com/api/ja.json");
+  const d=await r.json(),a=[];
+  (d.data||[]).forEach(p=>(p.cities||[]).forEach(c=>{
+    if(c.point&&c.point.length===2)a.push({pref:p.pref,city:norm(String(c.city||"")+String(c.ward||"")),lng:c.point[0],lat:c.point[1]});
+  }));
+  geo=a;return geo;
+}
+function findGeo(pref,city){
+  city=norm(city);
+  return (geo||[]).find(g=>g.pref===pref&&g.city===city)||
+         (geo||[]).find(g=>g.pref===pref&&(g.city.includes(city)||city.includes(g.city)));
+}
+async function showPref(pref){
+  currentPref=pref;document.body.classList.add("loading");
+  try{
+    await ensureGeo();layer.clearLayers();
+    const totals=cityTotals(pref),bounds=[];
+    totals.forEach((count,city)=>{
+      const g=findGeo(pref,city);if(!g)return;
+      bounds.push([g.lat,g.lng]);addMarker(g.lat,g.lng,city,count,()=>select([key(pref,city)],city+"の案件"));
+    });
+    if(bounds.length)map.fitBounds(bounds,{padding:[40,40],maxZoom:8});
+    else{const p=PREF_CENTERS[pref];if(p)map.setView(p,7)}
+    document.getElementById("title").textContent=pref+"の市区町村";
+    document.getElementById("sub").textContent="市区町村をクリックすると案件一覧を表示します";
+    document.getElementById("area").textContent=fmt([...totals.values()].reduce((a,b)=>a+b,0));
+    document.getElementById("list").innerHTML='<div class="empty">'+esc(pref)+'の市区町村を地図から選択してください。</div>';
+  } finally {document.body.classList.remove("loading")}
+}
+function hav(a,b){
+  const R=6371,t=x=>x*Math.PI/180,dlat=t(b.lat-a.lat),dlng=t(b.lng-a.lng);
+  const x=Math.sin(dlat/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dlng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+function humanLabel(k){
+  return ({building_type:"建物種別",consideration_level:"検討状況",symptoms:"症状",story:"階数",age_of_building:"築年数",chat_item:"ご相談内容"})[k]||k;
+}
+function valueText(v){
+  if(v==null||v==="")return"";
+  if(Array.isArray(v))return v.map(valueText).filter(Boolean).join(" / ");
+  if(typeof v==="object")return Object.entries(v).map(([k,x])=>humanLabel(k)+"："+valueText(x)).join(" / ");
+  return String(v);
+}
+function detailList(c){
+  const rows=[];
+  Object.entries(c.detail||{}).forEach(([k,v])=>{const t=valueText(v);if(t)rows.push([humanLabel(k),t])});
+  if(c.items&&c.items!=="null"){const t=valueText(c.items);if(t)rows.push(["依頼項目",t])}
+  if(!rows.length)return"";
+  return '<div class="detail"><ul>'+rows.map(([k,v])=>'<li><b>'+esc(k)+'</b>：'+esc(v)+'</li>').join("")+'</ul></div>';
+}
+function responseMail(c,type){
+  const subject=type==="対応"?"【案件対応希望】"+c.pref+" "+c.city+" / "+serviceLabel(c.service_code):"【案件相談希望】"+c.pref+" "+c.city;
+  const body=[
+    "案件について"+(type==="対応"?"対応を希望します。":"詳しく話を聞きたいです。"),
+    "",
+    "案件ID："+(c.case_id||""),
+    "種別："+serviceLabel(c.service_code),
+    "エリア："+c.pref+" "+c.city,
+    "住所："+(c.address||""),
+    "申込日時："+(c.inquired_at||c.received_at||"")
+  ].join("\n");
+  return "mailto:"+CONTACT_EMAIL+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
 }
 function render(a){
   const el=document.getElementById("list");
   if(!a.length){el.innerHTML='<div class="empty">該当案件はありません。</div>';return}
   el.innerHTML=a.map(c=>{
     const dt=c.inquired_at||new Date(c.received_at).toLocaleString("ja-JP");
-    return '<div class="card"><div class="top"><div><div class="city">'+esc(c.pref)+" "+esc(c.city)+'</div><div class="meta">'+esc(dt)+(c.customer_surname?(" ・ "+esc(c.customer_surname)+"様"):"")+'</div></div><span class="badge">'+label(c.service_code)+'</span></div><div class="address">'+esc(c.postal_code?("〒"+c.postal_code+" "):"")+esc(c.address||"")+"</div>"+detail(c)+"</div>";
+    return '<div class="card">'+
+      '<div class="top"><div><div class="city">'+esc(c.pref)+" "+esc(c.city)+'</div><div class="meta">'+esc(dt)+(c.customer_surname?(" ・ "+esc(c.customer_surname)+"様"):"")+'</div></div><span class="badge">'+serviceLabel(c.service_code)+'</span></div>'+
+      '<div class="address">'+esc(c.postal_code?("〒"+c.postal_code+" "):"")+esc(c.address||"")+'</div>'+
+      detailList(c)+
+      '<div class="actions">'+
+        '<a class="action main" href="'+responseMail(c,"対応")+'">この案件に対応したい</a>'+
+        '<a class="action" target="_blank" rel="noopener" href="'+TALK_URL+'">まず話を聞いてみる</a>'+
+      '</div></div>';
   }).join("");
 }
 async function select(keys,title){
-  document.getElementById("title").textContent=title;
-  document.getElementById("sub").textContent="直近6ヶ月 / "+keys.length+"市区町村";
-  const services=service==="all"?"gaiheki,amamori":service;
-  const d=await call({api:"cases",keys:keys.join(","),services});
-  document.getElementById("area").textContent=fmt(d.total||0);
-  render(d.cases||[]);
+  document.body.classList.add("loading");
+  try{
+    document.getElementById("title").textContent=title;
+    document.getElementById("sub").textContent="直近6ヶ月 / "+keys.length+"市区町村";
+    const services=service==="all"?"gaiheki,amamori":service;
+    const d=await call({api:"cases",keys:keys.join(","),services});
+    document.getElementById("area").textContent=fmt(d.total||0);
+    render(d.cases||[]);
+  } finally {document.body.classList.remove("loading")}
 }
 async function search(){
   const q=norm(document.getElementById("q").value);if(!q)return;
-  const cand=geo.filter(g=>g.city.includes(q));
-  if(!cand.length){alert("市区町村が見つかりません");return}
-  const c=cand[0],r=Number(document.getElementById("radius").value),m=activeSummary(),keys=[];
-  geo.forEach(g=>{if(hav(c,g)<=r&&m.has(key(g.pref,g.city)))keys.push(key(g.pref,g.city))});
-  map.setView([c.lat,c.lng],r===20?9:8);
-  await select(keys,c.city+"から"+r+"km圏内");
+  document.body.classList.add("loading");
+  try{
+    await ensureGeo();
+    const cand=geo.filter(g=>g.city.includes(q));
+    if(!cand.length){alert("市区町村が見つかりません");return}
+    const center=cand[0],r=Number(document.getElementById("radius").value),m=new Map();
+    currentSummary().forEach(x=>m.set(key(x.pref,x.city),(m.get(key(x.pref,x.city))||0)+Number(x.case_count||0)));
+    const keys=[];
+    geo.forEach(g=>{if(hav(center,g)<=r&&m.has(key(g.pref,g.city)))keys.push(key(g.pref,g.city))});
+    layer.clearLayers();
+    keys.forEach(k=>{
+      const [p,c]=k.split("|"),g=findGeo(p,c),count=m.get(k)||0;if(!g)return;
+      addMarker(g.lat,g.lng,c,count,()=>select([k],c+"の案件"));
+    });
+    map.setView([center.lat,center.lng],r===20?9:8);
+    await select(keys,center.city+"から"+r+"km圏内");
+  } finally {document.body.classList.remove("loading")}
 }
 document.getElementById("go").onclick=search;
 document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")search()});
-document.getElementById("service").onchange=function(){
-  service=this.value;draw();document.getElementById("area").textContent="-";
-  document.getElementById("list").innerHTML='<div class="empty">地図または検索からエリアを選択してください。</div>';
-};
+document.getElementById("reset").onclick=showJapan;
+document.getElementById("service").onchange=function(){service=this.value;currentPref?showPref(currentPref):showJapan()};
 
 (async()=>{
   try{
     if(!TOKEN)throw new Error("このURLには閲覧キーがありません");
-    const [s,g]=await Promise.all([
-      call({api:"summary"}),
-      fetch("https://japanese-addresses-v2.geoloniamaps.com/api/ja.json").then(r=>r.json())
-    ]);
-    summaries=s.rows||[];geo=flatten(g);
+    const s=await call({api:"summary"});summaries=s.rows||[];
     let o=0,r=0;
     summaries.forEach(x=>{if(x.service_code==="gaiheki")o+=Number(x.case_count||0);if(x.service_code==="amamori")r+=Number(x.case_count||0)});
     document.getElementById("outer").textContent=fmt(o);
     document.getElementById("rain").textContent=fmt(r);
     document.getElementById("all").textContent=fmt(o+r);
-    draw();
+    showJapan();
   }catch(e){
     console.error(e);
-    document.querySelector("main").innerHTML='<div class="error"><b>画面を読み込めませんでした。</b><p>閲覧URLが正しいか確認してください。</p></div>';
+    document.querySelector("main").innerHTML='<div class="empty"><b>画面を読み込めませんでした。</b><br>閲覧URLが正しいか確認してください。</div>';
   }
 })();
 </script>
-</body></html>
+</body>
+</html>
