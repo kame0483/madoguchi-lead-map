@@ -27,8 +27,22 @@ main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.95fr);gap
 .top{display:flex;justify-content:space-between;gap:8px}.city{font-weight:750;font-size:15px}
 .badge{font-size:11px;background:#eef2ff;color:#3146a8;padding:3px 7px;border-radius:999px;height:max-content}
 .meta{font-size:12px;color:#667085;margin-top:4px}.address{font-size:13px;margin-top:9px;font-weight:600}
-.detail{background:#f8f9fb;border-radius:9px;padding:9px 10px;margin-top:9px;font-size:12px}
-.detail ul{margin:0;padding-left:18px}.detail li{margin:4px 0;line-height:1.5}.detail b{font-weight:700}
+.work-title{font-size:15px;font-weight:800;margin-top:10px;line-height:1.45;color:#111827}
+.section-title{font-size:11px;font-weight:800;color:#667085;margin:12px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.info-box{border:1px solid #e5e7eb;background:#fafafa;border-radius:9px;padding:8px 9px;min-width:0}
+.info-label{font-size:10px;color:#667085;margin-bottom:3px}
+.info-value{font-size:12px;font-weight:700;color:#172033;line-height:1.4;overflow-wrap:anywhere}
+.alerts{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.alert-chip{font-size:11px;border-radius:999px;padding:5px 8px;background:#fff4e8;border:1px solid #fed7aa;color:#9a3412;font-weight:700}
+.amamori-box{background:#f8f9fb;border-radius:9px;padding:9px 10px;margin-top:8px}
+.amamori-row{display:grid;grid-template-columns:78px 1fr;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid #eceff3}
+.amamori-row:last-child{border-bottom:0}.amamori-key{color:#667085}.amamori-value{font-weight:700;line-height:1.5}
+.more{margin-top:9px;border-top:1px solid #eef1f5;padding-top:8px}
+.more summary{font-size:12px;color:#475467;font-weight:700;cursor:pointer;user-select:none}
+.more-grid{display:grid;grid-template-columns:1fr;gap:0;margin-top:7px}
+.more-row{display:grid;grid-template-columns:minmax(110px,.8fr) minmax(0,1.2fr);gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:11px;line-height:1.45}
+.more-row:last-child{border-bottom:0}.more-key{color:#667085}.more-value{font-weight:600;overflow-wrap:anywhere}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
 .action{border-radius:9px;padding:9px 8px;text-align:center;text-decoration:none;font-size:12px;font-weight:700;border:1px solid #d0d5dd;color:#172033;background:#fff}
 .action.main{background:#111827;color:#fff;border-color:#111827}
@@ -181,13 +195,75 @@ function valueText(v){
   if(typeof v==="object")return Object.entries(v).map(([k,x])=>humanLabel(k)+"："+valueText(x)).join(" / ");
   return String(v);
 }
-function detailList(c){
-  const rows=[];
-  Object.entries(c.detail||{}).forEach(([k,v])=>{const t=valueText(v);if(t)rows.push([humanLabel(k),t])});
-  if(c.items&&c.items!=="null"){const t=valueText(c.items);if(t)rows.push(["依頼項目",t])}
-  if(!rows.length)return"";
-  return '<div class="detail"><ul>'+rows.map(([k,v])=>'<li><b>'+esc(k)+'</b>：'+esc(v)+'</li>').join("")+'</ul></div>';
+function chatOf(c){
+  const d=c.detail||{};
+  return d.chat_item&&typeof d.chat_item==="object"&&!Array.isArray(d.chat_item)?d.chat_item:{};
 }
+function pick(obj,labels){
+  for(const k of labels){if(obj[k]!=null&&obj[k]!=="")return String(obj[k])}
+  return "";
+}
+function infoBox(label,value){
+  if(!value)return"";
+  return '<div class="info-box"><div class="info-label">'+esc(label)+'</div><div class="info-value">'+esc(value)+'</div></div>';
+}
+function isIssueValue(v){
+  const t=String(v||"").trim();
+  if(!t)return false;
+  return !/^(全くない|ない|なし|いいえ|わからない|特になし)$/.test(t);
+}
+function gaihekiBody(c){
+  const q=chatOf(c);
+  const priority=[
+    ["建物",pick(q,["物件の種類は？","一戸建てですか？"])],
+    ["階数",pick(q,["何回建てでしょうか？"])],
+    ["築年数",pick(q,["築年数は？"])],
+    ["延べ床面積",pick(q,["延べ床面積は、おおよそどのくらいでしょうか？"])],
+    ["工事予定",pick(q,["工事の予定はいつになりますか？"])],
+    ["見積取得",pick(q,["すでに見積もりはお持ちですか？"])],
+    ["外壁材",pick(q,["外壁材は？"])],
+    ["屋根材",pick(q,["お住まいの屋根材はどちらになりますか？"])]
+  ].filter(x=>x[1]);
+
+  const issueKeys=[
+    "チョーキングはありますか？","外壁にはがれはありますか？","ヘアークラックはありますか？",
+    "外壁にカビや苔はありますか？","外壁に色あせはみられますか？","屋根にカビや苔はありますか？",
+    "屋根の色がくすんでいませんか？","雨漏りや漏水の症状はありますか？","内壁にカビ・雨漏りはありますか？",
+    "屋根材にひび割れや欠けはありますか？"
+  ];
+  const issues=issueKeys.filter(k=>isIssueValue(q[k])).map(k=>{
+    const short=k.replace("はありますか？","").replace("はみられますか？","").replace("いませんか？","");
+    return short+"："+q[k];
+  });
+
+  const used=new Set([
+    "物件の種類は？","一戸建てですか？","何回建てでしょうか？","築年数は？",
+    "延べ床面積は、おおよそどのくらいでしょうか？","工事の予定はいつになりますか？",
+    "すでに見積もりはお持ちですか？","外壁材は？","お住まいの屋根材はどちらになりますか？",
+    ...issueKeys,"物件の地域は？"
+  ]);
+  const rest=Object.entries(q).filter(([k,v])=>!used.has(k)&&valueText(v));
+
+  let h='';
+  if(c.items&&c.items!=="null")h+='<div class="work-title">'+esc(valueText(c.items))+'</div>';
+  if(priority.length)h+='<div class="section-title">案件概要</div><div class="info-grid">'+priority.map(x=>infoBox(x[0],x[1])).join("")+'</div>';
+  if(issues.length)h+='<div class="section-title">気になる症状</div><div class="alerts">'+issues.map(x=>'<span class="alert-chip">'+esc(x)+'</span>').join("")+'</div>';
+  if(rest.length)h+='<details class="more"><summary>その他の物件情報（'+rest.length+'項目）</summary><div class="more-grid">'+rest.map(([k,v])=>'<div class="more-row"><div class="more-key">'+esc(k)+'</div><div class="more-value">'+esc(valueText(v))+'</div></div>').join("")+'</div></details>';
+  return h;
+}
+function amamoriBody(c){
+  const d=c.detail||{};
+  const rows=[
+    ["建物種別",valueText(d.building_type)],
+    ["検討状況",valueText(d.consideration_level)],
+    ["症状",valueText(d.symptoms)]
+  ].filter(x=>x[1]);
+  let h='';
+  if(c.items&&c.items!=="null")h+='<div class="work-title">'+esc(valueText(c.items))+'</div>';
+  if(rows.length)h+='<div class="section-title">案件内容</div><div class="amamori-box">'+rows.map(x=>'<div class="amamori-row"><div class="amamori-key">'+esc(x[0])+'</div><div class="amamori-value">'+esc(x[1])+'</div></div>').join("")+'</div>';
+  return h;
+}
+function caseBody(c){return c.service_code==="amamori"?amamoriBody(c):gaihekiBody(c)}
 function responseMail(c,type){
   const subject=type==="対応"?"【案件対応希望】"+c.pref+" "+c.city+" / "+serviceLabel(c.service_code):"【案件相談希望】"+c.pref+" "+c.city;
   const body=[
@@ -207,9 +283,9 @@ function render(a){
   el.innerHTML=a.map(c=>{
     const dt=c.inquired_at||new Date(c.received_at).toLocaleString("ja-JP");
     return '<div class="card">'+
-      '<div class="top"><div><div class="city">'+esc(c.pref)+" "+esc(c.city)+'</div><div class="meta">'+esc(dt)+(c.customer_surname?(" ・ "+esc(c.customer_surname)+"様"):"")+'</div></div><span class="badge">'+serviceLabel(c.service_code)+'</span></div>'+
-      '<div class="address">'+esc(c.postal_code?("〒"+c.postal_code+" "):"")+esc(c.address||"")+'</div>'+
-      detailList(c)+
+      '<div class="top"><div><div class="city">'+esc(c.pref)+" "+esc(c.city)+'</div><div class="meta">申込：'+esc(dt)+(c.customer_surname?(" ・ "+esc(c.customer_surname)+"様"):"")+'</div></div><span class="badge">'+serviceLabel(c.service_code)+'</span></div>'+
+      '<div class="address">📍 '+esc(c.postal_code?("〒"+c.postal_code+" "):"")+esc(c.address||"")+'</div>'+
+      caseBody(c)+
       '<div class="actions">'+
         '<a class="action main" href="'+responseMail(c,"対応")+'">この案件に対応したい</a>'+
         '<a class="action" target="_blank" rel="noopener" href="'+TALK_URL+'">まず話を聞いてみる</a>'+
