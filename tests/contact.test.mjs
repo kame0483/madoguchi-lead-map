@@ -31,3 +31,19 @@ await vm.runInContext('submitContact(request,input,sb,"qa-access-hash",hash)',co
 records=new Map();sent=[];providerStatus=500;
 result=await vm.runInContext('submitContact(request,input,sb,"qa-access-hash",hash)',context);assert.equal(result.body.notification_status,'failed');assert.equal(result.body.receipt_status,'pending');assert.equal(sent.length,1,'receipt waits for internal notification');
 console.log('Contact: validation, fixed recipient, privacy, calendar URL, missing configuration, both emails, idempotency and provider failure passed');
+for(const action of ['materials','trial']){
+ context.input={...base,action};
+ assert.equal(vm.runInContext('normalizeContact(input).action',context),action);
+ context.row={...normalized,action,case_snapshot:{}};
+ const adminIntent=vm.runInContext('contactMail("admin",row)',context),receiptIntent=vm.runInContext('contactMail("receipt",row)',context);
+ assert.equal(adminIntent.to,'info@gaihekiplus.com');
+ assert.ok(adminIntent.subject.includes(action==='materials'?'資料':'トライアル'));
+ assert.ok(receiptIntent.text.includes(action==='materials'?'サービス資料をご案内':'費用の適用範囲'));
+ records=new Map();sent=[];providerStatus=202;
+ const accepted=await vm.runInContext('submitContact(request,input,sb,"qa-access-hash",hash)',context);
+ assert.equal(accepted.body.notification_status,'sent');assert.equal(accepted.body.receipt_status,'sent');assert.equal(sent.length,2);
+ for(const field of ['company_name','contact_name','phone','email']){
+  context.input={...base,action,[field]:''};assert.throws(()=>vm.runInContext('normalizeContact(input)',context),field+' must be required');
+ }
+}
+console.log('Materials/trial: all four required fields, distinct internal notifications and truthful applicant receipts passed');

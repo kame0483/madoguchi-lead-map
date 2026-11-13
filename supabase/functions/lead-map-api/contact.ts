@@ -4,11 +4,11 @@ const emailPattern=/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-
 export function contactConfig(){return {email_enabled:Boolean(Deno.env.get("SENDGRID_API_KEY")),intake_ready:true,calendar_url:CONTACT_CALENDAR};}
 export function normalizeContact(body:Record<string,unknown>){
  const txt=(k:string,max:number,required=false)=>{const value=typeof body[k]==="string"?String(body[k]).trim():"";if((required&&!value)||value.length>max||/[\r\n\u0000-\u001f]/.test(value))throw new Error("invalid_contact");return value;};
- const company=txt("company_name",120,true),name=txt("contact_name",80),email=txt("email",254,true).toLowerCase();
+ const company=txt("company_name",120,true),name=txt("contact_name",80,true),email=txt("email",254,true).toLowerCase();
  let phone=txt("phone",30,true).normalize("NFKC").replace(/[\s()（）ー－-]/g,"");if(phone.startsWith("+81"))phone="0"+phone.slice(3);
  if(!emailPattern.test(email)||!/^0[1-9][0-9]{8,9}$/.test(phone))throw new Error("invalid_contact");
  const action=txt("action",20,true),caseId=txt("case_id",100)||null,requestId=txt("request_id",36,true);
- if(!["respond","conditions"].includes(action)||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))throw new Error("invalid_contact");
+ if(!["respond","conditions","materials","trial"].includes(action)||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))throw new Error("invalid_contact");
  if(txt("fax_address",100))throw new Error("invalid_contact");
  const date=txt("preferred_date",10)||null,window=txt("preferred_window",20)||"any";
  if(!["any","09:00-12:00","12:00-15:00","15:00-18:00"].includes(window))throw new Error("invalid_contact");
@@ -19,13 +19,14 @@ export function normalizeContact(body:Record<string,unknown>){
  return {request_id:requestId,action,case_id:caseId,company_name:company,contact_name:name,email,phone,preferred_date:date,preferred_window:window};
 }
 export function contactMail(kind:string,row:any){
- const c=row.case_snapshot||{},label=row.action==="respond"?"案件対応のご希望":"条件についてのご相談";
+ const c=row.case_snapshot||{},label=({respond:"案件対応のご希望",conditions:"条件についてのご相談",materials:"サービス資料のご請求",trial:"無料トライアルについてのご相談"} as Record<string,string>)[row.action]||"お問い合わせ";
  const area=[c.pref,c.city].filter(Boolean).join(" ")||"案件・対応エリア全般";
  const service=c.service_code==="amamori"?"雨漏り":c.service_code==="gaiheki"?"外壁":"全般";
  const when=(row.preferred_date||"日程の指定なし")+" ／ "+(row.preferred_window==="any"?"時間帯の指定なし":row.preferred_window);
  const summary=["受付番号："+row.request_id,"ご用件："+label,"会社名："+row.company_name,"ご担当者："+(row.contact_name||"未入力"),"電話番号："+row.phone,"メールアドレス："+row.email,"電話可能な日時（日本時間）："+when,"案件ID："+(row.case_id||"案件全般"),"種別："+service,"エリア："+area];
  if(kind==="admin")return {to:CONTACT_EMAIL,replyTo:row.email,subject:"【案件エリアマップ】"+label+" / "+row.company_name,text:summary.concat(["住所："+(c.address||"—"),"案件受付日時："+(c.inquired_at||c.effective_at||"—"),"","ご希望日時は確定予約ではありません。担当者からお電話をお願いいたします。","Web予約状況は予約カレンダーをご確認ください。",CONTACT_CALENDAR]).join("\n")};
- return {to:row.email,replyTo:CONTACT_EMAIL,subject:"【madoguchi】お問い合わせを受け付けました",text:[row.company_name+(row.contact_name?"\n"+row.contact_name+"様":" ご担当者様"),"","案件エリアマップからご連絡いただき、ありがとうございます。",label+"を受け付けました。","","弊社の担当者から、ご入力いただいた電話番号へお電話いたします。","ご希望日時は確定予約ではありません。担当者が確認のうえご連絡いたします。","",...summary,"","【資料を共有しながらのWeb打ち合わせをご希望の方】","以下の予約ページから、ご都合のよい日時をお選びください。",CONTACT_CALENDAR,"","本メールにお心当たりがない場合は、このメールにご返信ください。","madoguchi株式会社",CONTACT_EMAIL].join("\n")};
+ const next=row.action==="materials"?"担当者から、このメールアドレスへサービス資料をご案内します。内容の確認のため、お電話する場合があります。":row.action==="trial"?"担当者からお電話し、トライアルの対象エリア・期間・費用の適用範囲をご案内します。この受付で利用開始や無料の案件紹介が確定するものではありません。":"弊社の担当者から、ご入力いただいた電話番号へお電話いたします。";
+ return {to:row.email,replyTo:CONTACT_EMAIL,subject:"【madoguchi】お問い合わせを受け付けました",text:[row.company_name+(row.contact_name?"\n"+row.contact_name+"様":" ご担当者様"),"","案件エリアマップからご連絡いただき、ありがとうございます。",label+"を受け付けました。","",next,"このフォームの送信だけで契約・案件購入が確定することはありません。","ご希望日時は確定予約ではありません。担当者が確認のうえご連絡いたします。","",...summary,"","【資料を共有しながらのWeb打ち合わせをご希望の方】","以下の予約ページから、ご都合のよい日時をお選びください。",CONTACT_CALENDAR,"","本メールにお心当たりがない場合は、このメールにご返信ください。","madoguchi株式会社",CONTACT_EMAIL].join("\n")};
 }
 async function sendMail(message:any,requestId:string,kind:string){
  const from=(Deno.env.get("LEAD_MAP_MAIL_FROM")||CONTACT_EMAIL).trim();
