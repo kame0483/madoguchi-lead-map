@@ -1,4 +1,4 @@
-export const CONTACT_EMAIL = "info@gaihekiplus.com";
+export const CONTACT_EMAIL = "t.kamei@madoguchi.inc";
 export const CONTACT_CALENDAR = "https://calendar.app.google/mRRBUfa9pHoPJVxeA";
 const emailPattern=/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}$/;
 export function contactConfig(){return {email_enabled:Boolean(Deno.env.get("SENDGRID_API_KEY")),intake_ready:true,calendar_url:CONTACT_CALENDAR};}

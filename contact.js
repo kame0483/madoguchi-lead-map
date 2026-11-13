@@ -8,7 +8,7 @@ const contactIntents={
  materials:{label:"サービス資料のご請求",heading:"まずは資料で、ご確認ください。",intro:"案件紹介の仕組みや料金体系をご検討いただくための資料を、担当者からメールでご案内します。",submit:"サービス資料を請求する",success:"資料請求を受け付けました",next:"担当者から、ご入力のメールアドレスへ資料をご案内します。内容の確認のため、お電話する場合があります。"},
  trial:{label:"無料トライアルのご相談",heading:"御社で試せるか、ご相談ください。",intro:"御社のエリアやご希望を伺い、トライアルの対象・期間・費用の適用範囲をご案内します。送信だけで利用開始は確定しません。",submit:"無料トライアルについて相談する",success:"トライアルのご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、対象エリアや実施条件をご案内します。"}
 };
-const CONTACT_FORM_ENDPOINT="https://formsubmit.co/ajax/info@gaihekiplus.com";
+const CONTACT_FORM_ENDPOINT="https://formsubmit.co/ajax/t.kamei@madoguchi.inc";
 function contactNotification(data){
  const c=data.case_id?contactCases.get(data.case_id):null;
  const subject="【資料ダウンロード】"+contactIntents[data.action].label+" / "+data.company_name;
