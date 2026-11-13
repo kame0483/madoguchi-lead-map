@@ -80,7 +80,20 @@ async function drawPref(pref,id){
  if(map){if(points.length)map.fitBounds(points,{padding:[35,35],maxZoom:9});else map.setView(PREF_CENTERS[pref],8)}
  $("mapHint").textContent=missing?"位置未登録 "+fmt(missing)+"件も一覧に含みます":"市区町村を選択";
 }
-function setArea(label,count,copy){$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。案件内容を下の一覧から確認できます。"}
+function updateListNav(){
+ const panel=$("casePanel"),nav=$("stickyListNav");
+ if(!panel||!nav||typeof panel.getBoundingClientRect!=="function")return;
+ const top=panel.getBoundingClientRect().top;
+ nav.hidden=!snapshot||Number(pageTotal)<=0||top<window.innerHeight;
+}
+if(typeof window!=="undefined"){
+ let navFrame=false;
+ const scheduleNav=()=>{if(navFrame)return;navFrame=true;requestAnimationFrame(()=>{navFrame=false;updateListNav()})};
+ window.addEventListener("scroll",scheduleNav,{passive:true});
+ window.addEventListener("resize",scheduleNav,{passive:true});
+ if("IntersectionObserver" in window)new IntersectionObserver(scheduleNav).observe($("casePanel"));
+}
+function setArea(label,count,copy){$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。下の案件一覧で、具体的な工事内容を確認できます。";$("stickyListCount").textContent=fmt(count)+"件";updateListNav()}
 function updateURL(){const u=new URL(location.href);["pref","city","r","service","area"].forEach(k=>u.searchParams.delete(k));if(view.pref)u.searchParams.set("pref",view.pref);if(view.city)u.searchParams.set("city",view.city);if(view.kind==="radius")u.searchParams.set("r",view.radius);if(view.kind==="city")u.searchParams.set("area","city");if(service!=="all")u.searchParams.set("service",service);history.replaceState(null,"",u)}
 function beginView(next){
  generation++;pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
