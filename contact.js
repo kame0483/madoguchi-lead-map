@@ -8,16 +8,25 @@ const contactIntents={
  materials:{label:"サービス資料のご請求",heading:"まずは資料で、ご確認ください。",intro:"案件紹介の仕組みや料金体系をご検討いただくための資料を、担当者からメールでご案内します。",submit:"サービス資料を請求する",success:"資料請求を受け付けました",next:"担当者から、ご入力のメールアドレスへ資料をご案内します。内容の確認のため、お電話する場合があります。"},
  trial:{label:"無料トライアルのご相談",heading:"御社で試せるか、ご相談ください。",intro:"御社のエリアやご希望を伺い、トライアルの対象・期間・費用の適用範囲をご案内します。送信だけで利用開始は確定しません。",submit:"無料トライアルについて相談する",success:"トライアルのご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、対象エリアや実施条件をご案内します。"}
 };
-const contactMessages={email_not_configured:"フォーム受付はただいま準備中です。下の予約ページ、またはメールからお問い合わせください。",case_unavailable:"この案件の状況が更新されています。Web予約またはメールから、案件の紹介可否をお問い合わせください。",rate_limited:"短時間で複数のお申し込みがありました。少し時間をおくか、下の予約ページからご相談ください。",invalid_contact:"会社名・担当者名・メールアドレス・電話番号・希望日をご確認ください。",idempotency_conflict:"入力内容が変更されています。一度画面を閉じて、もう一度お申し込みください。"};
+const CONTACT_FORM_ENDPOINT="https://formsubmit.co/ajax/info@gaihekiplus.com";
+function contactNotification(data){
+ const c=data.case_id?contactCases.get(data.case_id):null;
+ return {_subject:"【案件エリアマップ】"+contactIntents[data.action].label+" / "+data.company_name,_template:"table",_honey:data.fax_address||"",email:data.email,
+ "受付番号":data.request_id,"ご用件":contactIntents[data.action].label,"会社名":data.company_name,"担当者名":data.contact_name,"電話番号":data.phone,"メールアドレス":data.email,
+ "電話可能日":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般"};
+}
 async function contactRequest(data){
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),25000);
  try{
-  const response=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-lead-map-key":TOKEN},body:JSON.stringify(data),signal:ctrl.signal,cache:"no-store",referrerPolicy:"no-referrer"});
+  const response=await fetch(CONTACT_FORM_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(contactNotification(data)),signal:ctrl.signal,cache:"no-store",referrerPolicy:"origin",credentials:"omit"});
   const result=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(contactMessages[result.error]||(response.status===403?"担当者から届いた閲覧URLを開いて、もう一度お試しください。":"送信を完了できませんでした。少し時間をおいて再度お試しください。"));
-  if(!result.ok||!result.request_id)throw new Error("受付結果を確認できませんでした。再度送信してください。");
-  return result;
- }catch(e){if(e.name==="AbortError")throw new Error("通信の完了を確認できませんでした。入力内容を変えずに再度送信すると、重複を避けて確認できます。");throw e;}finally{clearTimeout(timer)}
+  if(!response.ok)throw new Error("送信を完了できませんでした。下のメール窓口、または予約ページからご連絡ください。");
+  if(/activat|confirm.*email/i.test(String(result.message||"")))throw new Error("メール通知の初回認証が完了していません。お急ぎの場合は下のメール窓口、または予約ページをご利用ください。");
+  if(result.success!==true&&result.success!=="true"){
+   throw new Error("受付結果を確認できませんでした。下のメール窓口、または予約ページをご利用ください。");
+  }
+  return {request_id:data.request_id};
+ }catch(e){if(e.name==="AbortError")throw new Error("送信結果を確認できませんでした。再送すると重複する場合があります。お急ぎの場合は下の予約ページをご利用ください。");throw e;}finally{clearTimeout(timer)}
 }
 function contactToday(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10)}
 function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").disabled=busy;contactEl("contactSubmit").textContent=busy?"送信しています…":contactIntents[contactAction].submit;contactEl("contactRetryMail").disabled=busy;contactEl("contactClose").disabled=busy;contactEl("contactForm").querySelectorAll("input,select").forEach(el=>el.disabled=busy);}
@@ -37,16 +46,9 @@ async function openContactDialog(action,caseId,opener){
  contactEl("contactFallbackMail").href=fallback;
  if(!contactDialog.open){if(typeof contactDialog.showModal==="function")contactDialog.showModal();else contactDialog.setAttribute("open","");}
  contactDialog.scrollTop=0;
- try{
-  const r=await fetch(API+"?api=contact_config",{cache:"no-store",referrerPolicy:"no-referrer",signal:AbortSignal.timeout(10000)});if(!r.ok)throw new Error("unavailable");const config=await r.json();
-  if(version!==contactOpenVersion||!contactDialog.open)return;
-  contactEl("contactLoading").hidden=true;
-  if(config.intake_ready===true&&config.email_enabled&&TOKEN){contactEl("contactForm").hidden=false;contactEl("contactCompany").focus({preventScroll:true});}
-  else{contactEl("contactIntro").querySelector(".dialog-intro").hidden=true;contactEl("contactUnavailable").hidden=false;}
- }catch{
-  if(version!==contactOpenVersion||!contactDialog.open)return;
-  contactEl("contactLoading").hidden=true;contactEl("contactIntro").querySelector(".dialog-intro").hidden=true;contactEl("contactUnavailable").hidden=false;
- }
+ contactEl("contactLoading").hidden=true;
+ contactEl("contactForm").hidden=false;
+ contactEl("contactCompany").focus({preventScroll:true});
 }
 function closeContactDialog(){if(contactSubmitting)return;contactOpenVersion++;if(typeof contactDialog.close==="function")contactDialog.close();else contactDialog.removeAttribute("open");contactOpener?.focus({preventScroll:true});}
 function contactShowResult(result,payload){
@@ -54,9 +56,8 @@ function contactShowResult(result,payload){
  contactEl("contactSuccessHeading").textContent=contactIntents[payload.action].success;contactEl("contactSuccessCopy").textContent=contactIntents[payload.action].next;
  contactEl("contactRequestNumber").textContent=result.request_id;contactEl("contactSavedPhone").textContent=payload.phone;
  contactEl("contactSavedTime").textContent=(payload.preferred_date||"日程の指定なし")+" ／ "+(payload.preferred_window==="any"?"時間帯の指定なし":payload.preferred_window.replace("-","〜"));
- const confirmed=result.notification_status==="sent",receipt=result.receipt_status==="sent";
- contactEl("contactReceiptNote").textContent=confirmed?(receipt?"受付内容を、ご入力のメールアドレスへお送りしました。":"受付は完了しています。確認メールの送信を確認できないため、お急ぎの場合は下の予約ページをご利用ください。 一度届いたメールがないかもご確認ください。") :"ご依頼は記録されましたが、担当者への通知の完了を確認できません。再確認をお試しいただくか、お急ぎの場合は下の予約ページをご利用ください。";
- contactEl("contactRetryMail").hidden=result.notification_status==="unknown"||result.receipt_status==="unknown"||(confirmed&&receipt);
+ contactEl("contactReceiptNote").textContent="ありがとうございます。担当者から順次ご案内します。受付の自動返信メールはお送りしていません。";
+ contactEl("contactRetryMail").hidden=true;
  contactEl("contactSuccess").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
 }
 async function contactSubmit(e){
@@ -66,9 +67,11 @@ async function contactSubmit(e){
  if(payload.phone.startsWith("+81"))payload.phone="0"+payload.phone.slice(3);
  if(!/^0[1-9][0-9]{8,9}$/.test(payload.phone)){contactEl("contactPhone").setCustomValidity("10桁または11桁の電話番号を入力してください。");contactEl("contactPhone").reportValidity();return;}
  const body=JSON.stringify(payload);if(body!==contactSubmissionBody){contactSubmissionId=crypto.randomUUID();contactSubmissionBody=body;}
+ if(payload.fax_address)return;
+ if(!payload.company_name||!payload.contact_name||!payload.email){contactEl("contactError").textContent="会社名・担当者名・メールアドレスを入力してください。";contactEl("contactError").hidden=false;return;}
  contactEl("contactError").hidden=true;contactSetBusy(true);
- try{const result=await contactRequest({api:"contact_submit",request_id:contactSubmissionId,...payload});contactShowResult(result,payload);}
- catch(error){contactEl("contactError").textContent=error.message;contactEl("contactError").hidden=false;}
+ try{const result=await contactRequest({request_id:contactSubmissionId,...payload});contactShowResult(result,payload);}
+ catch(error){contactEl("contactError").textContent=error.message;contactEl("contactError").hidden=false;contactEl("contactUnavailable").hidden=false;}
  finally{contactSetBusy(false)}
 }
 document.addEventListener("click",e=>{const trigger=e.target.closest?.("[data-contact-action]");if(!trigger)return;e.preventDefault();contactEl("contactIntro").querySelector(".dialog-intro").hidden=false;openContactDialog(trigger.dataset.contactAction,trigger.dataset.contactId,trigger).catch(()=>{});});
