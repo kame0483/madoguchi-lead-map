@@ -11,7 +11,13 @@
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:#f4f6fa;color:#172033}
 header{background:#fff;border-bottom:1px solid #e7e9ee;padding:14px 16px}
 .brand{font-weight:800;font-size:19px;letter-spacing:-.02em}.muted{font-size:12px;color:#667085;margin-top:3px}
-.search-card{margin:12px auto 8px;max-width:1100px;background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:14px}
+.user-hero{margin:12px auto 8px;max-width:1100px;background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:16px}
+.user-hero .hero-label{font-size:12px;color:#667085;font-weight:700}
+.user-hero .hero-number{display:flex;align-items:baseline;gap:6px;margin-top:3px}
+.user-hero strong{font-size:42px;line-height:1;letter-spacing:-.05em;color:#0f172a}
+.user-hero .hero-unit{font-size:15px;font-weight:800;color:#344054}
+.user-hero .hero-note{font-size:11px;color:#98a2b3;margin-top:6px}
+.search-card{margin:0 auto 8px;max-width:1100px;background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:14px}
 .search-label{font-size:13px;font-weight:800;margin-bottom:8px}.search-row{display:grid;grid-template-columns:minmax(220px,1fr) auto auto auto;gap:8px}
 input,select,button{border:1px solid #d0d5dd;border-radius:10px;padding:11px 12px;background:#fff;font-size:14px;min-height:44px}
 input{width:100%;font-size:16px}button{cursor:pointer;font-weight:700}.primary{background:#111827;color:#fff;border-color:#111827}.secondary{background:#fff}
@@ -62,7 +68,9 @@ main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.9fr);gap:1
 @media(max-width:900px){
   body{background:#f7f8fa}
   header{padding:12px 14px}.brand{font-size:18px}
-  .search-card{margin:10px 10px 8px;padding:13px;border-radius:13px;position:relative;z-index:2}
+  .user-hero{margin:10px 10px 8px;padding:14px;border-radius:13px}
+  .user-hero strong{font-size:44px}
+  .search-card{margin:0 10px 8px;padding:13px;border-radius:13px;position:relative;z-index:2}
   .search-label{font-size:14px}
   .search-row{grid-template-columns:1fr 1fr}
   .search-row input{grid-column:1/-1}
@@ -87,8 +95,14 @@ main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.9fr);gap:1
 <body>
 <header>
   <div class="brand">案件エリアマップ</div>
-  <div class="muted">掲載案件の外壁・雨漏り案件を確認できます</div>
+  <div class="muted">外壁・雨漏り案件を地域別に確認できます</div>
 </header>
+
+<section class="user-hero">
+  <div class="hero-label">有効ユーザー数</div>
+  <div class="hero-number"><strong>8,123</strong><span class="hero-unit">件</span></div>
+  <div class="hero-note">管理画面集計値（2026/11/13確認）</div>
+</section>
 
 <section class="search-card">
   <div class="search-label">御社の拠点エリアを入力してください</div>
@@ -102,17 +116,15 @@ main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.9fr);gap:1
 </section>
 
 <section id="areaSummary" class="area-summary">
-  <div class="eyebrow" id="areaEyebrow">掲載案件の掲載案件</div>
+  <div class="eyebrow" id="areaEyebrow">地域別の実案件数</div>
   <strong id="areaBig">-</strong><span class="unit">件</span>
   <p id="areaCopy">拠点エリアを入力すると、対応可能な案件数を確認できます。</p>
 </section>
 
 <div class="stats">
-  <div class="stat"><b id="all">-</b><span>掲載案件 合計</span></div>
-  <div class="stat"><b id="month">5,502</b><span>直近30日</span></div>
-  <div class="stat"><b id="outer">-</b><span>外壁</span></div>
-  <div class="stat"><b id="rain">-</b><span>雨漏り</span></div>
-  <div class="stat"><b id="area">-</b><span>選択エリア</span></div>
+  <div class="stat"><b id="outer">-</b><span>外壁・実案件</span></div>
+  <div class="stat"><b id="rain">-</b><span>雨漏り・実案件</span></div>
+  <div class="stat"><b id="area">-</b><span>選択エリア・実案件</span></div>
 </div>
 
 <main>
@@ -193,7 +205,7 @@ function showJapan(){
   document.getElementById("title").textContent="都道府県を選択してください";
   document.getElementById("sub").textContent="クリックすると市区町村ごとの案件数を表示します";
   const total=[...totals.values()].reduce((a,b)=>a+b,0);
-  setAreaSummary("全国・掲載案件",total,"地図から都道府県を選ぶか、上の検索欄に拠点エリアを入力してください。");
+  setAreaSummary("全国の実案件数",total,"地図から都道府県を選ぶか、上の検索欄に拠点エリアを入力してください。");
   document.getElementById("list").innerHTML='<div class="empty">都道府県を選ぶと、その地域の市区町村と案件を確認できます。</div>';
 }
 async function ensureGeo(){
@@ -224,7 +236,7 @@ async function showPref(pref){
     document.getElementById("title").textContent=pref+"の市区町村";
     document.getElementById("sub").textContent="市区町村をクリックすると案件一覧を表示します";
     const total=[...totals.values()].reduce((a,b)=>a+b,0);
-    setAreaSummary(pref+"・掲載案件",total,pref+"では掲載案件で"+fmt(total)+"件の案件が掲載されています。御社の対応可能な市区町村をご確認ください。");
+    setAreaSummary(pref+"の実案件数",total,pref+"では"+fmt(total)+"件の実案件を確認できます。御社の対応可能な市区町村をご確認ください。");
     document.getElementById("list").innerHTML='<div class="empty">'+esc(pref)+'の市区町村を地図から選択してください。</div>';
   } finally {document.body.classList.remove("loading")}
 }
@@ -354,7 +366,7 @@ async function select(keys,title){
     document.getElementById("sub").textContent=""+keys.length+"市区町村";
     const services=service==="all"?"gaiheki,amamori":service;
     const d=await call({api:"cases",keys:keys.join(","),services});
-    setAreaSummary(title+"・掲載案件",d.total||0,title+"では"+fmt(d.total||0)+"件の案件を確認できます。");
+    setAreaSummary(title+"の実案件数",d.total||0,title+"では"+fmt(d.total||0)+"件の案件を確認できます。");
     render(d.cases||[]);
   } finally {document.body.classList.remove("loading")}
 }
@@ -397,7 +409,6 @@ document.getElementById("service").onchange=function(){service=this.value;curren
     summaries.forEach(x=>{if(x.service_code==="gaiheki")o+=Number(x.case_count||0);if(x.service_code==="amamori")r+=Number(x.case_count||0)});
     document.getElementById("outer").textContent=fmt(o);
     document.getElementById("rain").textContent=fmt(r);
-    document.getElementById("all").textContent=fmt(o+r);
     showJapan();
   }catch(e){
     console.error(e);
