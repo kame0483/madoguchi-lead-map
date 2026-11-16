@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+let calls=0,listeners={};const nodes=new Map();
+const node=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'',hidden:true,dataset:{},classList:{toggle(){}},addEventListener(){},scrollIntoView(){},getBoundingClientRect:()=>({top:1000})});return nodes.get(id)};
+const parent={};const context={IS_DEMO:true,TOKEN:'',Date,URL,console,snapshot:null,fmt:String,location:{origin:'https://example.invalid'},call:()=>{calls++;throw Error('Demo must not load live campaign configuration')},window:{parent,addEventListener:(name,fn)=>listeners[name]=fn},document:{getElementById:node,addEventListener(){}},setTimeout(){},requestAnimationFrame(){}};
+vm.runInNewContext(readFileSync(new URL('../experience.js',import.meta.url),'utf8'),context);assert.equal(calls,0);assert.equal(node('demoNotice').hidden,false);assert.equal(node('campaignBanner').hidden,false);assert.equal(node('campaignDemoLabel').hidden,false);
+const initial=node('campaignTitle').textContent;
+listeners.message({origin:'https://evil.invalid',source:parent,data:{type:'lead-map-campaign-preview',campaign:{title:'must-not-render'}}});assert.equal(node('campaignTitle').textContent,initial);
+listeners.message({origin:'https://example.invalid',source:{},data:{type:'lead-map-campaign-preview',campaign:{title:'wrong-source'}}});assert.equal(node('campaignTitle').textContent,initial);
+listeners.message({origin:'https://example.invalid',source:parent,data:{type:'lead-map-campaign-preview',campaign:{title:'未保存の文面',body:'対象エリアを確認します',terms:'デモ表示のみ',cta_label:'対象を確認',cta_action:'conditions'},scroll:true}});assert.equal(node('campaignTitle').textContent,'未保存の文面');assert.equal(node('campaignTerms').textContent,'デモ表示のみ');assert.equal(calls,0);
+let activityNetwork=0;vm.runInNewContext(readFileSync(new URL('../activity.js',import.meta.url),'utf8'),{IS_DEMO:true,fetch(){activityNetwork++},window:{}});assert.equal(activityNetwork,0);
+const admin=readFileSync(new URL('../admin.html',import.meta.url),'utf8');assert.ok(admin.includes('sandbox="allow-scripts allow-forms"'));assert.ok(!admin.includes('allow-same-origin'));
+console.log('Campaign preview: real placement, unsaved text via verified parent only, sandbox isolation and no analytics/config writes passed');

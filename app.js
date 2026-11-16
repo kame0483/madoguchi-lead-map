@@ -1,7 +1,8 @@
 "use strict";
 const API="https://mhlrawabzltuauramxps.supabase.co/functions/v1/lead-map-api";
 const params=new URLSearchParams(location.search);
-const TOKEN=params.get("k")||"";
+const IS_DEMO=params.get("demo")==="campaign";
+const TOKEN=IS_DEMO?"":params.get("k")||"";
 const CALENDAR_URL="https://calendar.app.google/mRRBUfa9pHoPJVxeA";
 const CONTACT_EMAIL="t.kamei@madoguchi.inc";
 const contactCases=new Map();
@@ -18,6 +19,7 @@ let summaries=[],snapshot=null,service="all",geoIndex=null;
 const geoCache=new Map();
 let map=null,layer=null,rangeCircle=null,baseTiles=null,japanOutline=null,outlineJob=null,view={kind:"nation",label:"全国",keys:null,pref:""},generation=0,pageController=null,pageLoading=false,pageCount=0,pageTotal=0,seen=new Set();
 async function call(data,signal){
+ if(IS_DEMO&&["activity","conversion_submit","conversion_email_ack","contact_submit"].includes(data.api))throw new Error("デモ画面のため送信は行いません。");
  const controller=new AbortController();
  const abort=()=>controller.abort();if(signal?.aborted)abort();else signal?.addEventListener("abort",abort,{once:true});
  const timer=setTimeout(abort,20000);
@@ -119,7 +121,7 @@ if(typeof window!=="undefined"){
  if("IntersectionObserver" in window)new IntersectionObserver(scheduleNav).observe($("casePanel"));
 }
 function setArea(label,count,copy){window.LeadMapExperience?.areaChanged(label,count);$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。下の案件一覧で、具体的な工事内容を確認できます。";$("stickyListCount").textContent=fmt(count)+"件";updateListNav()}
-function updateURL(){const u=new URL(location.href);["pref","city","r","service","area"].forEach(k=>u.searchParams.delete(k));if(view.pref)u.searchParams.set("pref",view.pref);if(view.city)u.searchParams.set("city",view.city);if(view.kind==="radius")u.searchParams.set("r",view.radius);if(view.kind==="city")u.searchParams.set("area","city");if(service!=="all")u.searchParams.set("service",service);history.replaceState(null,"",u)}
+function updateURL(){if(IS_DEMO)return;const u=new URL(location.href);["pref","city","r","service","area"].forEach(k=>u.searchParams.delete(k));if(view.pref)u.searchParams.set("pref",view.pref);if(view.city)u.searchParams.set("city",view.city);if(view.kind==="radius")u.searchParams.set("r",view.radius);if(view.kind==="city")u.searchParams.set("area","city");if(service!=="all")u.searchParams.set("service",service);history.replaceState(null,"",u)}
 function beginView(next){
  window.LeadMapActivity?.track("area_search",{area:next.label});generation++;contactCases.clear();pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
  $("searchStatus").textContent="";$("candidates").replaceChildren();$("list").innerHTML='<div class="empty">案件を読み込んでいます…</div>';$("pageStatus").textContent="";$("loadMore").hidden=true;$("list").setAttribute("aria-busy","true");
@@ -146,7 +148,7 @@ async function loadPage(id=generation){
   if(pageCount===0)$("list").replaceChildren();
   const rows=data.cases||[];if(!rows.length&&pageCount<pageTotal)throw new Error("続きを取得できませんでした。もう一度お試しください。");
   const unique=rows.filter(c=>{const k=c.case_id;if(seen.has(k))return false;seen.add(k);return true});
-  $("list").insertAdjacentHTML("beforeend",unique.map(cardHTML).join(""));pageCount+=rows.length;
+  $("list").insertAdjacentHTML("beforeend",unique.map((c,i)=>cardHTML(c)+(pageCount+i===2?caseInquiryBreak():"" )).join(""));pageCount+=rows.length;
   if(!pageTotal)$("list").innerHTML='<div class="empty">現在、このエリアの該当案件はありません。<br>絞り込み条件を変えるか、検索範囲を広げてお試しください。</div>';
   $("pageStatus").textContent="全"+fmt(pageTotal)+"件中 "+fmt(seen.size)+"件を表示";$("loadMore").hidden=pageCount>=pageTotal;$("loadMore").textContent="さらに"+Math.min(PAGE_SIZE,pageTotal-pageCount)+"件表示";
  }catch(e){if(id!==generation||e.name==="AbortError")return;
@@ -258,21 +260,27 @@ function responseMail(c,type){
 }
 function isNewCase(c){const d=new Date(c.effective_at||c.inquired_at||c.received_at);const age=new Date(snapshot||Date.now()).getTime()-d.getTime();return Number.isFinite(age)&&age>=0&&age<=3*86400000}
 function consultLink(c){return /^https:\/\//.test(CALENDAR_URL)?CALENDAR_URL:responseMail(c,"相談")}
-function cardHTML(c){
- if(c.public_preview){
-  contactCases.set(String(c.case_id),{case_id:String(c.case_id),pref:c.pref,city:c.city,service_code:c.service_code});
-  return '<article class="card public-card"><div class="top"><div><div class="city">'+esc(c.pref)+' '+esc(c.city)+(isNewCase(c)?'<span class="new-badge">新着</span>':'')+'</div><div class="meta">'+esc(dateText(c.effective_at||c.inquired_at||c.received_at))+' 受付</div></div><span class="badge">'+serviceLabel(c.service_code)+'</span></div><div class="work-title">'+(c.service_code==='amamori'?'雨漏りのご相談':'外壁・屋根工事のご相談')+'</div><div class="info-grid">'+(c.public_facts||[]).map(x=>infoBox(x.label,x.value)).join('')+'</div><p class="public-card-note">紹介可否や詳しい内容は、担当者が確認してご案内します。</p><div class="actions"><button type="button" class="action main" data-contact-action="respond" data-contact-id="'+esc(c.case_id)+'">この案件の紹介条件を確認</button><button type="button" class="action" data-contact-action="conditions" data-contact-id="'+esc(c.case_id)+'">まず相談したい</button></div></article>';
- }
-
- contactCases.set(String(c.case_id),{case_id:String(c.case_id),pref:c.pref,city:c.city,service_code:c.service_code});
- const date=dateText(c.effective_at||c.inquired_at||c.received_at),badge=isNewCase(c)?'<span class="new-badge">新着</span>':'',target=CALENDAR_URL?' target="_blank" rel="noopener noreferrer"':'';
- const postal=c.postal_code?'〒'+c.postal_code+' ':'';
- const address=String(c.address||'').replace(/^〒?\s*[0-9]{3}-?[0-9]{4}\s*/,"");
- return '<article class="card"><div class="top"><div><div class="city">'+esc(c.pref)+' '+esc(c.city)+badge+'</div><div class="meta">'+esc(date)+' 受付</div></div><span class="badge">'+serviceLabel(c.service_code)+'</span></div>'+
- '<div class="customer-line"><span>'+esc(c.customer_surname?c.customer_surname+'様':'お客様')+'</span>'+(c.masked_phone?'<span class="phone">'+esc(c.masked_phone)+'</span>':'')+'</div>'+
- '<div class="address">'+esc(postal)+esc(address)+'</div>'+caseBody(c)+
- '<div class="actions"><button type="button" class="action main" data-contact-action="respond" data-contact-id="'+esc(c.case_id)+'">この案件に対応したい</button><button type="button" class="action" data-contact-action="conditions" data-contact-id="'+esc(c.case_id)+'">条件を聞きたい</button></div></article>';
+function privateCaseFacts(c){
+ const q=chatOf(c),d=c.detail||{};
+ return [['建物',d.building_type||pick(q,['物件の種類は？','一戸建てですか？'])],['築年数',d.age_of_building||q['築年数は？']],['階数',d.story||q['何回建てでしょうか？']],['工事予定',q['工事の予定はいつになりますか？']],['延べ床面積',q['延べ床面積は、おおよそどのくらいでしょうか？']],['見積取得',q['すでに見積もりはお持ちですか？']],['外壁材',q['外壁材は？']],['屋根材',q['お住まいの屋根材はどちらになりますか？']],['検討状況',d.consideration_level]].filter(x=>x[1]).map(([label,value])=>({label,value:valueText(value)}));
 }
+function cardHTML(c){
+ contactCases.set(String(c.case_id),{case_id:String(c.case_id),pref:c.pref,city:c.city,service_code:c.service_code});
+ const facts=c.public_preview?(c.public_facts||[]):privateCaseFacts(c),get=label=>facts.find(f=>f.label===label)?.value||'—';
+ const work=c.public_work||valueText(c.items)||(c.service_code==='amamori'?'雨漏りのご相談':'外壁工事のご相談');
+ const address=c.public_preview?c.display_address:c.address,phone=c.masked_phone||'',id='lead-details-'+encodeURIComponent(c.case_id);
+ const check=c.needs_status_check||get('工事予定')==='すでに施工済み',action=check?'conditions':'respond',cta=check?'最新の状況を確認する':'この案件に対応したい';
+ const symptom=c.public_symptoms||[],other=c.public_other||[];
+ const meta='<span class="lead-category">'+serviceLabel(c.service_code)+'</span>'+(isNewCase(c)?'<span class="lead-new">新着</span>':'')+(check?'<span class="lead-review">状況の確認が必要</span>':'');
+ const detailFacts=facts.map(f=>'<div><dt>'+esc(f.label)+'</dt><dd>'+esc(f.value)+'</dd></div>').join('');
+ return '<article class="card lead-record '+(c.public_preview?'public-card':'')+'"><div class="lead-overview"><div class="lead-location"><div class="lead-tags">'+meta+'</div><h3>'+esc(c.pref)+' '+esc(c.city)+'</h3><p>'+esc(dateText(c.effective_at||c.inquired_at||c.received_at))+' 受付</p></div><div class="lead-request"><h4>'+esc(work)+'</h4><p class="lead-street">'+esc(address||[c.pref,c.city].join(' '))+'</p><dl class="lead-quick-facts">'+['建物','築年数','工事予定'].map(label=>'<div><dt>'+label+'</dt><dd>'+esc(get(label))+'</dd></div>').join('')+'</dl></div><div class="lead-decision"><button type="button" class="lead-detail-toggle" data-case-toggle="'+esc(c.case_id)+'" aria-expanded="false" aria-controls="'+esc(id)+'">案件の詳細を見る <span aria-hidden="true">＋</span></button><button type="button" class="lead-interest" data-contact-action="'+action+'" data-contact-id="'+esc(c.case_id)+'">'+cta+' <span aria-hidden="true">→</span></button></div></div><section id="'+esc(id)+'" class="lead-record-body" hidden aria-label="'+esc(c.pref+' '+c.city)+'の案件詳細"><div class="lead-detail-heading"><h4>受付時のご相談内容</h4><span>案件ID：'+esc(c.case_id)+'</span></div>'+(check?'<p class="lead-status-note">受付情報に「すでに施工済み」の回答があります。最新の状況を担当者へご確認ください。</p>':'')+'<div class="lead-detail-layout"><div class="lead-contact-data"><dl><dt>所在地</dt><dd>'+esc(address||[c.pref,c.city].join(' '))+'</dd></dl><small>'+(c.public_preview?'番地・建物名は非公開':'閲覧用URLの表示情報')+'</small><dl><dt>電話番号 <span>下4桁非表示</span></dt><dd class="lead-masked-phone">'+esc(phone||'連絡先の掲載なし')+'</dd></dl>'+(!c.public_preview&&c.customer_surname?'<p>'+esc(c.customer_surname)+'様</p>':'')+'</div><div><dl class="lead-detail-facts">'+detailFacts+'</dl>'+(symptom.length?'<div class="lead-symptoms"><h5>気になる症状</h5>'+symptom.map(v=>'<span>'+esc(v)+'</span>').join('')+'</div>':'')+(other.length?'<details class="lead-other"><summary>その他の物件情報（'+other.length+'項目）</summary><dl>'+other.map(f=>'<div><dt>'+esc(f.label)+'</dt><dd>'+esc(f.value)+'</dd></div>').join('')+'</dl></details>':'')+(!c.public_preview?'<details class="lead-other"><summary>受付情報をさらに確認する</summary>'+caseBody(c)+'</details>':'')+'</div></div><div class="lead-detail-next"><div><strong>対応できそうな案件が見つかったら</strong><p>紹介可否・費用・進め方を担当者に確認できます。送信だけで購入は確定しません。</p></div><button type="button" data-contact-action="conditions" data-contact-id="'+esc(c.case_id)+'">この案件の条件を聞く →</button></div></section></article>';
+}
+function caseInquiryBreak(){return '<aside class="case-inquiry-break"><div><span>地域の案件に、対応できそうだと感じたら。</span><p>ご紹介できる案件と費用を、担当者に先に確認できます。</p></div><button type="button" data-contact-action="conditions">このエリアの紹介条件を確認 →</button></aside>';}
+$('list').addEventListener('click',e=>{
+ const button=e.target.closest?.('[data-case-toggle]');if(!button)return;const record=button.closest('.lead-record'),panel=record.querySelector('.lead-record-body'),open=button.getAttribute('aria-expanded')!=='true';panel.hidden=!open;button.setAttribute('aria-expanded',String(open));button.innerHTML=open?'詳細を閉じる <span aria-hidden="true">−</span>':'案件の詳細を見る <span aria-hidden="true">＋</span>';
+ if(open)window.LeadMapActivity?.track('button_click',{action:'other_details',case_id:button.dataset.caseToggle,field:'case_details'});
+ updateListNav();
+});
 function nearestBox(center,b){return {lat:Math.max(b[0],Math.min(b[2],center.lat)),lng:Math.max(b[1],Math.min(b[3],center.lng))}}
 async function showRadius(pref,city,radius){
  const action=++generation;setSearchBusy(true);$("searchStatus").textContent="";

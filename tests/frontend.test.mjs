@@ -18,7 +18,7 @@ await vm.runInContext('beginView({kind:"city",label:"案件なし",keys:[],pref:
 assert.equal(vm.runInContext('isNewCase({inquired_at:"2099-01-01"})',context),false);
 assert.equal(vm.runInContext('noCounty("上郡町")',context),'上郡町');assert.equal(vm.runInContext('noCounty("赤穂郡上郡町")',context),'上郡町');
 const mail=vm.runInContext('responseMail({case_id:"case-1",service_code:"gaiheki",pref:"岡山県",city:"岡山市北区",address:"岡山県の住所",inquired_at:"2026-11-13T00:00:00Z"},"対応")',context);const u=new URL(mail);assert.equal(u.pathname,'t.kamei@madoguchi.inc');for(const label of ['案件ID：case-1','種別：外壁','エリア：岡山県 岡山市北区','住所：岡山県の住所','申込日時：2026-11-13T00:00:00Z'])assert.ok(u.searchParams.get('body').includes(label));
-const escaped=vm.runInContext('cardHTML({pref:"<script>",city:"テスト",service_code:"gaiheki",customer_surname:"",address:"",items:"",inquired_at:"2026-11-13"})',context);assert.ok(!escaped.includes('<script>'));assert.ok(escaped.includes('お客様'));
+const escaped=vm.runInContext('cardHTML({pref:"<script>",city:"テスト",service_code:"gaiheki",customer_surname:"",address:"",items:"",inquired_at:"2026-11-13"})',context);assert.ok(!escaped.includes('<script>'));assert.ok(!escaped.includes('undefined様'));assert.ok(!escaped.includes('null様'));
 console.log('Frontend: 10→20→120 pagination, zero areas, lazy geo, surname fallback, XSS escaping, future-date badge and CTA contents passed');
 
 context.points=Array.from({length:47},(_,i)=>({x:140+i%3,y:170+i%4,size:i<8?42:36,pref:'地域'+i}));
@@ -26,3 +26,8 @@ const layout=vm.runInContext('layoutNationalMarkers(points,320,350)',context);as
 for(const n of layout){assert.ok(n.x>=n.size/2&&n.x<=320-n.size/2);assert.ok(n.y>=n.size/2&&n.y<=350-n.size/2);}
 let worst=0;for(let i=0;i<layout.length;i++)for(let j=i+1;j<layout.length;j++)worst=Math.max(worst,(layout[i].size+layout[j].size)/2-Math.hypot(layout[i].x-layout[j].x,layout[i].y-layout[j].y));assert.ok(worst<1,'47 labels should remain readable in a 320px-wide map');
 console.log('National map: 47 callout labels avoid overlap on a phone without changing original locations');
+
+context.publicInput={case_id:'p1',public_preview:true,pref:'千葉県',city:'大網白里市',display_address:'千葉県大網白里市大網',masked_phone:'090-1234-****',public_work:'外壁塗装',public_facts:[{label:'築年数',value:'20年以上'},{label:'工事予定',value:'6ヶ月以内'}],public_symptoms:['ひび割れあり'],public_other:[],effective_at:'2026-11-16'};
+const rowHTML=vm.runInContext('cardHTML(publicInput)',context);for(const text of ['外壁塗装','20年以上','6ヶ月以内','090-1234-****','案件の詳細を見る','aria-expanded="false"','lead-record-body" hidden'])assert.ok(rowHTML.includes(text),text);
+context.publicInput.needs_status_check=true;assert.ok(vm.runInContext('cardHTML(publicInput)',context).includes('最新の状況を確認する'));
+const demoContext={...context,location:{search:'?demo=campaign&k=must-not-use',href:'https://example.invalid/?demo=campaign'}};vm.createContext(demoContext);vm.runInContext(source,demoContext);assert.equal(vm.runInContext('TOKEN',demoContext),'');const before=calls.length;await assert.rejects(vm.runInContext('call({api:"conversion_submit"})',demoContext),/デモ/);assert.equal(calls.length,before);

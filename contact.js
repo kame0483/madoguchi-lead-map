@@ -2,6 +2,7 @@
 const contactDialog=document.getElementById("contactDialog");
 let contactRequestedArea="",contactAction="conditions",contactCaseId=null,contactOpener=null,contactOpenVersion=0,contactSubmitting=false,contactSubmissionId=null,contactSubmissionBody=null;
 const contactEl=id=>document.getElementById(id);
+function contactIsDemo(){return typeof IS_DEMO!=="undefined"&&IS_DEMO;}
 const contactIntents={
  respond:{label:"この案件への対応希望",heading:"ありがとうございます！",intro:"弊社の担当者からお電話いたします。御社の連絡先と、ご都合のよい日時をお知らせください。",submit:"この案件の対応について連絡を依頼する",success:"ご希望を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、案件の紹介可否や条件をご案内します。"},
  conditions:{label:"案件・紹介条件のご相談",heading:"気になることから、ご相談ください。",intro:"紹介条件や対応エリアについて、担当者が個別にご案内します。御社の連絡先をお知らせください。",submit:"条件について相談する",success:"ご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、ご希望のエリアや紹介条件をお伺いします。"},
@@ -17,6 +18,7 @@ function contactNotification(data){
  "電話可能日":data.preferred_window==="now"?"今すぐの連絡を希望":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="now"?"今すぐ":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般","希望エリア":data.requested_area||[c?.pref,c?.city].filter(Boolean).join(" ")||"指定なし"};
 }
 async function contactRequest(data){
+ if(contactIsDemo())throw new Error("デモ画面のため送信は行いません。");
  const registered=await call({api:"conversion_submit",...data,visit_id:window.LeadMapActivity?.id||null});
  if(registered.email_acknowledged)return {request_id:data.request_id};
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),25000);
@@ -33,7 +35,7 @@ async function contactRequest(data){
  }catch(e){if(e.name==="AbortError")throw new Error("送信結果を確認できませんでした。再送すると重複する場合があります。お急ぎの場合は下の予約ページをご利用ください。");if(e.name==="TypeError")throw new Error("通信を完了できませんでした。接続状況を確認するか、下のメール窓口・予約ページをご利用ください。");throw e;}finally{clearTimeout(timer)}
 }
 function contactToday(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10)}
-function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").disabled=busy;contactEl("contactSubmit").textContent=busy?"送信しています…":contactIntents[contactAction].submit;contactEl("contactClose").disabled=busy;contactEl("contactForm").querySelectorAll("input,select,button").forEach(el=>el.disabled=busy||(!busy&&el.id==="contactDate"&&contactEl("contactForm").querySelector('input[name="callback_time"]:checked')?.value==="now"));}
+function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").disabled=busy;contactEl("contactSubmit").textContent=busy?"送信しています…":contactIsDemo()?"デモで入力の流れを確認する":contactIntents[contactAction].submit;contactEl("contactClose").disabled=busy;contactEl("contactForm").querySelectorAll("input,select,button").forEach(el=>el.disabled=busy||(!busy&&el.id==="contactDate"&&contactEl("contactForm").querySelector('input[name="callback_time"]:checked')?.value==="now"));}
 async function openContactDialog(action,caseId,opener){
  if(contactSubmitting)return;
  const version=++contactOpenVersion;contactAction=Object.hasOwn(contactIntents,action)?action:"conditions";contactCaseId=caseId||null;contactOpener=opener;contactSubmissionId=null;contactSubmissionBody=null;
@@ -42,7 +44,7 @@ async function openContactDialog(action,caseId,opener){
  contactEl("contactIntent").textContent=intent.label;
  contactEl("contactHeading").textContent=intent.heading;
  contactEl("contactIntro").querySelector(".dialog-intro").textContent=intent.intro;
- contactEl("contactSubmit").textContent=intent.submit;
+ contactEl("contactSubmit").textContent=contactIsDemo()?"デモで入力の流れを確認する":intent.submit;
  contactEl("contactCase").textContent=c?[serviceLabel(c.service_code),c.pref,c.city].filter(Boolean).join(" ／ ")+"\n案件ID："+c.case_id:contactRequestedArea+ (contactRequestedArea?"の紹介条件について":"案件・対応エリア全般について");
  contactEl("contactIntro").querySelector(".dialog-intro").hidden=false;contactEl("contactIntro").hidden=false;contactEl("contactSuccess").hidden=true;contactEl("contactForm").hidden=true;contactEl("contactUnavailable").hidden=true;contactEl("contactLoading").hidden=false;contactEl("contactError").hidden=true;
  contactEl("contactDate").min=contactToday();contactEl("contactDate").max=new Date(Date.now()+90*86400000+9*3600000).toISOString().slice(0,10);
@@ -60,7 +62,18 @@ function contactShowError(message){
  const error=contactEl("contactError");error.textContent=message;error.hidden=false;
  error.scrollIntoView({behavior:"auto",block:"center"});error.focus({preventScroll:true});
 }
+function contactDemoResult(payload){
+ contactEl('contactIntro').hidden=true;contactEl('contactForm').hidden=true;contactEl('contactSuccess').hidden=false;
+ contactEl('contactSuccessHeading').textContent='デモ入力を確認しました';
+ contactEl('contactSuccessCopy').textContent='入力から完了までの流れを確認できました。これは実際の問い合わせ受付ではありません。';
+ contactEl('contactReceiptNote').textContent='メール・Google Chatへの通知、入力内容の保存、予約は行っていません。';
+ contactEl('contactRequestNumber').textContent='DEMO（保存なし）';contactEl('contactSavedPhone').textContent=payload.phone;
+ contactEl('contactSavedTime').textContent=payload.preferred_window==='now'?'今すぐの連絡を希望':(payload.preferred_date||'日付指定なし')+' ／ '+(payload.preferred_window==='any'?'時間指定なし':payload.preferred_window);
+ contactEl('contactSuccess').scrollIntoView({block:'start',behavior:'auto'});
+}
 function contactShowResult(result,payload){
+ if(contactIsDemo()){contactDemoResult(payload);return;}
+
  window.LeadMapActivity?.track("conversion",{action:payload.action,case_id:payload.case_id||""});
  const summary={request_id:result.request_id,action:payload.action,preferred_date:payload.preferred_date,preferred_window:payload.preferred_window};
  try{sessionStorage.setItem("lead-map-confirmation",JSON.stringify(summary));}catch{}
@@ -83,6 +96,7 @@ async function handleContactSubmit(e){
   if(payload.phone.startsWith("+81"))payload.phone="0"+payload.phone.slice(3);
   if(!/^0[1-9][0-9]{8,9}$/.test(payload.phone)){contactShowError("電話番号は10桁または11桁で入力してください。ハイフン付きでも入力できます。");contactEl("contactPhone").setAttribute("aria-invalid","true");return;}
   if(payload.preferred_window==="now")payload.preferred_date=null;
+  if(contactIsDemo()){contactDemoResult(payload);return;}
   const body=JSON.stringify(payload);if(body!==contactSubmissionBody){contactSubmissionId=crypto.randomUUID();contactSubmissionBody=body;}
   contactEl("contactError").hidden=true;contactEl("contactUnavailable").hidden=true;contactSetBusy(true);
   const result=await contactRequest({request_id:contactSubmissionId,...payload});contactShowResult(result,payload);

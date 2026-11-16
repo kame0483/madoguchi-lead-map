@@ -14,3 +14,13 @@ assert.ok(!JSON.stringify(vm.runInContext('publicBootstrap(data)',c)).includes('
 console.log('Sharing: public response allowlist, categorical-only preview facts, campaign limits/conditions/date and payload whitelist passed');
 
 c.value.body='対象エリアのご案内\n条件を確認してください。';assert.match(vm.runInContext('normalizeCampaign(value).body',c),/\n/);
+
+for(const [input,expected] of [['090-1234-****','090-1234-****'],['03-1234-****','03-1234-****'],['09012345678',''],['09012345678****',''],['invalid','']]){c.phone=input;assert.equal(vm.runInContext('maskedPublicPhone(phone)',c),expected);}
+c.addressCase={pref:'東京都',city:'世田谷区',address:'〒123-4567 東京都世田谷区三軒茶屋2丁目10番5号 秘密マンション501'};assert.equal(vm.runInContext('publicTownAddress(addressCase)',c),'東京都世田谷区三軒茶屋');
+c.addressCase.address='東京都世田谷区三軒茶屋一丁目秘密ビル';assert.equal(vm.runInContext('publicTownAddress(addressCase)',c),'東京都世田谷区三軒茶屋');
+c.addressCase.address='東京都世田谷区秘密マンション';assert.equal(vm.runInContext('publicTownAddress(addressCase)',c),'東京都世田谷区');
+c.more={case_id:'real-record',pref:'千葉県',city:'大網白里市',address:'千葉県大網白里市大網123番地秘密棟',masked_phone:'090-1234-****',items:'外壁 塗装 / 屋根 雨漏り・防水 / 101～150平米',detail:{chat_item:{'築年数は？':'20年〜','工事の予定はいつになりますか？':'〜6ヶ月','延べ床面積は、おおよそどのくらいでしょうか？':'101〜150㎡(31～45坪)','すでに見積もりはお持ちですか？':'いいえ','ヘアークラックはありますか？':'ある'}}};
+const details=vm.runInContext('publicCase(more)',c);assert.ok(details.public_facts.some(f=>f.value==='20年以上'));assert.ok(details.public_facts.some(f=>f.value==='6ヶ月以内'));assert.ok(details.public_facts.some(f=>f.label==='延べ床面積'));assert.ok(details.public_facts.some(f=>f.value==='未取得'));assert.equal(details.display_address,'千葉県大網白里市大網');assert.equal(details.masked_phone,'090-1234-****');assert.ok(details.public_work.includes('外壁塗装'));assert.ok(!JSON.stringify(details).includes('123番地'));assert.ok(!JSON.stringify(details).includes('秘密棟'));
+c.more.detail.chat_item['工事の予定はいつになりますか？']='すでに施工済み';assert.equal(vm.runInContext('publicCase(more).needs_status_check',c),true);
+for(const pair of [['q:築年数は？','20年〜',true],['q:築年数は？','09012345678',false],['q:住所','東京都',false],['q:外壁材は？','山田様',false],['q:工事の予定はいつになりますか？','〜6ヶ月',true]]){c.k=pair[0];c.v=pair[1];assert.equal(vm.runInContext('isPublicFilterValue(k,v)',c),pair[2]);}
+console.log('Case detail: database-masked phone only, town-only address, actual choice formats, safe facets and completed-work flag passed');

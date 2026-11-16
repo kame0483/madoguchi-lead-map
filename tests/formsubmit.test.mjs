@@ -32,3 +32,7 @@ console.log('Submission flow: autofill-safe send, hourly schedule, success-only 
 
 assert.equal(registrations[0].api,'conversion_submit');assert.ok(registrations.some(x=>x.api==='conversion_email_ack'));
 registerFailure=true;const previous=requests.length;await assert.rejects(vm.runInContext('contactRequest(input)',c),/保存できません/);assert.equal(requests.length,previous,'do not email when durable registration fails');
+
+c.IS_DEMO=true;registerFailure=false;const sentBeforeDemo=requests.length,registeredBeforeDemo=registrations.length,savedBeforeDemo=stored;destination=null;
+await assert.rejects(vm.runInContext('contactRequest(input)',c),/デモ/);await vm.runInContext('handleContactSubmit()',c);assert.equal(requests.length,sentBeforeDemo);assert.equal(registrations.length,registeredBeforeDemo);assert.equal(destination,null);assert.equal(stored,savedBeforeDemo);assert.equal(node('contactSuccessHeading').textContent,'デモ入力を確認しました');
+console.log('Campaign demo: contact flow makes no registration/email request and stores no confirmation or contacts');

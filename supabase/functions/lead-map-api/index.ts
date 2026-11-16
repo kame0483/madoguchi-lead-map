@@ -3,7 +3,7 @@ import { ACCESS_HASH } from "./access-config.ts";
 import { contactConfig, submitContact } from "./contact.ts";
 import { ADMIN_HASH, CHAT_WEBHOOK } from "./notification-config.ts";
 import { normalizeActivity, registerConversion, deliverChat, postChat, uuid, normalizeCompanies } from "./activity.ts";
-import { publicPage, publicBootstrap, normalizeCampaign } from "./sharing.ts";
+import { publicPage, publicBootstrap, normalizeCampaign, publicFilterOptions, isPublicFilterValue } from "./sharing.ts";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-lead-map-key,x-lead-map-admin","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
 async function sha256Hex(input:string){const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(input));return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,"0")).join("");}
 function out(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});}
@@ -106,12 +106,12 @@ Deno.serve(async(req:Request)=>{
    if(api==="case_filters"){
     const {data,error}=await sb.rpc("lead_map_filter_options_v3",{...common,p_keys:keys});
     if(error)return out({error:"data_unavailable"},500);
-    return out(publicView?{total:data.total,fields:{service_code:[{value:'gaiheki'},{value:'amamori'}]}}:data);
+    return out(publicView?publicFilterOptions(data):data);
    }
    let filters=get("filters")??{};
    if(typeof filters==="string"){try{filters=JSON.parse(filters)}catch{return out({error:"invalid_filters"},400)}}
    if(!filters||typeof filters!=="object"||Array.isArray(filters)||Object.keys(filters).length>12||Object.entries(filters).some(([k,v])=>k.length>160||typeof v!=="string"||!v||v.length>160||!(/^(service_code|items|recent_days|q:.+|d:(building_type|consideration_level|symptoms|story|age_of_building))$/.test(k))||(k==="recent_days"&&!["1","3","7","30"].includes(v))||(k==="service_code"&&!["gaiheki","amamori"].includes(v))))return out({error:"invalid_filters"},400);
-   if(publicView&&Object.keys(filters).some(k=>!['service_code','recent_days'].includes(k)))return out({error:'invalid_filters'},400);
+   if(publicView&&Object.entries(filters).some(([k,v])=>!isPublicFilterValue(k,v)))return out({error:'invalid_filters'},400);
    const limit=Number(get("limit")??10),offset=Number(get("offset")??0);
    if(!Number.isInteger(limit)||limit<1||!Number.isInteger(offset)||offset<0)return out({error:"invalid_page"},400);
    const {data,error}=await sb.rpc("lead_map_page_v3",{...common,p_keys:keys,p_limit:Math.min(limit,50),p_offset:offset,p_filters:filters});

@@ -32,3 +32,20 @@ el('crmSearchResults').addEventListener('click',async e=>{
  try{const r=await api({api:'admin_crm_link',company_id:row.id});receiveCompanies(r.rows);issuerStatus(row.company_name+'のMF情報とひも付くURLを発行しました。拠点の都道府県から表示します。');el('companyResults').scrollIntoView({behavior:'auto',block:'start'});}
  catch(e){issuerStatus(e.message||'発行できませんでした。',true);}finally{b.disabled=false;issuerLoading(false);}
 });
+
+function sendCampaignPagePreview(scroll=false){
+ const frame=el('campaignPageFrame');if(el('campaignPagePreview').hidden||!frame.contentWindow)return;
+ frame.contentWindow.postMessage({type:'lead-map-campaign-preview',campaign:campaignValues(),scroll},'*');
+}
+el('openCampaignPagePreview').addEventListener('click',()=>{
+ el('campaignPagePreview').hidden=false;const frame=el('campaignPageFrame');
+ if(!frame.getAttribute('src'))frame.src='./?demo=campaign#campaignBanner';else sendCampaignPagePreview(true);
+ el('campaignPagePreview').scrollIntoView({behavior:'auto',block:'start'});
+});
+el('campaignPageFrame').addEventListener('load',()=>sendCampaignPagePreview(true));
+el('campaignForm').addEventListener('input',()=>sendCampaignPagePreview(false));
+document.querySelectorAll('[data-preview-device]').forEach(b=>b.addEventListener('click',()=>{
+ const mobile=b.dataset.previewDevice==='mobile';el('campaignPreviewViewport').classList.toggle('mobile',mobile);
+ document.querySelectorAll('[data-preview-device]').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));
+ sendCampaignPagePreview(true);
+}));
