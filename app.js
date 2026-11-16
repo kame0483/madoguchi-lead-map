@@ -55,14 +55,32 @@ function initMap(){
  layer=L.layerGroup().addTo(map);
  map.on('zoomend moveend resize',()=>{if(snapshot&&view.kind==='nation')renderNationalMarkers()});
 }
-function addMarker(g,label,count,fn){if(!map)return;const size=count>=200?54:count>=50?47:40;
+function addMarker(g,label,count,fn,sizeOverride){if(!map)return;const size=sizeOverride??(count>=200?54:count>=50?47:40);
  const html='<div class="map-bubble '+(count>=200?'high':count===0?'zero':'')+'" style="--size:'+size+'px"><b>'+fmt(count)+'</b><span>'+esc(label)+'</span></div>';
  L.marker([g.lat,g.lng],{title:label+' '+fmt(count)+'件',alt:label+' '+fmt(count)+'件',icon:L.divIcon({className:"case-marker",html,iconSize:[size,size],iconAnchor:[0,0]}),zIndexOffset:count}).on("click",()=>run(fn)).addTo(layer);
 }
 function clearMap(){layer?.clearLayers();if(rangeCircle){rangeCircle.remove();rangeCircle=null}}
+function layoutNationalMarkers(points,width,height){
+ const nodes=points.map(p=>({...p,x:p.x,y:p.y}));
+ // Label callouts only. Actual prefecture locations and counts never change.
+ for(let pass=0;pass<160;pass++){
+  let moved=0;
+  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+   const a=nodes[i],b=nodes[j],minimum=(a.size+b.size)/2+5;let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+   if(d>=minimum)continue;if(d<.001){const angle=(i+j+1)*2.39996;dx=Math.cos(angle);dy=Math.sin(angle);d=1;}
+   const shift=(minimum-d)/2+.01;a.x-=dx/d*shift;a.y-=dy/d*shift;b.x+=dx/d*shift;b.y+=dy/d*shift;moved++;
+  }
+  for(const n of nodes){const margin=n.size/2+5;n.x=Math.max(margin,Math.min(width-margin,n.x));n.y=Math.max(margin,Math.min(height-margin,n.y));}
+  if(!moved)break;
+ }
+ return nodes;
+}
 function renderNationalMarkers(){
- if(!map)return;layer.clearLayers();const totals=totalsByPref();
- Object.entries(PREF_CENTERS).forEach(([pref,p])=>addMarker({lat:p[0],lng:p[1]},pref,totals.get(pref)||0,()=>showPref(pref)));
+ if(!map)return;layer.clearLayers();const totals=totalsByPref(),dimensions=map.getSize();
+ const points=Object.entries(PREF_CENTERS).map(([pref,p])=>{const count=totals.get(pref)||0,screen=map.latLngToContainerPoint(p);return {pref,p,count,size:count>=200?42:count?36:28,x:screen.x,y:screen.y};}).filter(n=>n.x>=-n.size&&n.x<=dimensions.x+n.size&&n.y>=-n.size&&n.y<=dimensions.y+n.size);
+ const labels=layoutNationalMarkers(points,dimensions.x,dimensions.y);
+ for(const n of labels){const display=map.containerPointToLatLng([n.x,n.y]),original=map.latLngToContainerPoint(n.p);if(Math.hypot(n.x-original.x,n.y-original.y)>8)L.polyline([n.p,display],{color:'#9aa99e',weight:1,opacity:.7,interactive:false}).addTo(layer);}
+ for(const n of labels){const g=map.containerPointToLatLng([n.x,n.y]);addMarker(g,n.pref,n.count,()=>showPref(n.pref),n.size);}
 }
 function showJapanOutline(){
  if(!map)return;if(baseTiles&&map.hasLayer(baseTiles))map.removeLayer(baseTiles);

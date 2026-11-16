@@ -20,3 +20,9 @@ assert.equal(vm.runInContext('noCounty("上郡町")',context),'上郡町');asser
 const mail=vm.runInContext('responseMail({case_id:"case-1",service_code:"gaiheki",pref:"岡山県",city:"岡山市北区",address:"岡山県の住所",inquired_at:"2026-11-13T00:00:00Z"},"対応")',context);const u=new URL(mail);assert.equal(u.pathname,'t.kamei@madoguchi.inc');for(const label of ['案件ID：case-1','種別：外壁','エリア：岡山県 岡山市北区','住所：岡山県の住所','申込日時：2026-11-13T00:00:00Z'])assert.ok(u.searchParams.get('body').includes(label));
 const escaped=vm.runInContext('cardHTML({pref:"<script>",city:"テスト",service_code:"gaiheki",customer_surname:"",address:"",items:"",inquired_at:"2026-11-13"})',context);assert.ok(!escaped.includes('<script>'));assert.ok(escaped.includes('お客様'));
 console.log('Frontend: 10→20→120 pagination, zero areas, lazy geo, surname fallback, XSS escaping, future-date badge and CTA contents passed');
+
+context.points=Array.from({length:47},(_,i)=>({x:140+i%3,y:170+i%4,size:i<8?42:36,pref:'地域'+i}));
+const layout=vm.runInContext('layoutNationalMarkers(points,320,350)',context);assert.equal(layout.length,47);assert.equal(context.points[0].x,140);
+for(const n of layout){assert.ok(n.x>=n.size/2&&n.x<=320-n.size/2);assert.ok(n.y>=n.size/2&&n.y<=350-n.size/2);}
+let worst=0;for(let i=0;i<layout.length;i++)for(let j=i+1;j<layout.length;j++)worst=Math.max(worst,(layout[i].size+layout[j].size)/2-Math.hypot(layout[i].x-layout[j].x,layout[i].y-layout[j].y));assert.ok(worst<1,'47 labels should remain readable in a 320px-wide map');
+console.log('National map: 47 callout labels avoid overlap on a phone without changing original locations');
