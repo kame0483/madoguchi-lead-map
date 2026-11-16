@@ -13,7 +13,7 @@ export function publicCase(c:any){
 export function publicPage(data:any){return {total:data.total,area_total:data.area_total??data.total,snapshot:data.snapshot,cases:(data.cases||[]).map(publicCase),visibility:'public'};}
 export function normalizeCampaign(value:any){
  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('invalid_campaign');
- const txt=(key:string,max:number)=>{const v=typeof value[key]==='string'?value[key].trim():'';if(v.length>max||/[\u0000-\u001f]/.test(v))throw Error('invalid_campaign');return v;};
+ const txt=(key:string,max:number)=>{const multiline=['body','terms'].includes(key);const v=typeof value[key]==='string'?value[key].trim().replace(/\r\n?/g,'\n'):'';if(v.length>max||(multiline?/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/:/[\u0000-\u001f]/).test(v))throw Error('invalid_campaign');return v;};
  const enabled=value.enabled===true,title=txt('title',80),body=txt('body',500),terms=txt('terms',300),cta_label=txt('cta_label',40),cta_action=txt('cta_action',20)||'conditions',ends_on=txt('ends_on',10);
  if(!['materials','trial','conditions'].includes(cta_action)||enabled&&(!title||!body||!cta_label||!terms))throw Error('invalid_campaign');
  if(ends_on&&(!/^\d{4}-\d{2}-\d{2}$/.test(ends_on)||!Number.isFinite(new Date(ends_on+'T00:00:00Z').getTime())||new Date(ends_on+'T00:00:00Z').toISOString().slice(0,10)!==ends_on))throw Error('invalid_campaign');
