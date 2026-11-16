@@ -4,14 +4,15 @@ const el=id=>document.getElementById(id),esc=x=>String(x??'').replace(/[&<>"']/g
 const stamp=x=>new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(x));
 const duration=ms=>{const s=Math.round(Number(ms||0)/1000);return Math.floor(s/60)+'分'+s%60+'秒';};
 const labels={respond:'案件への対応希望',conditions:'条件を聞きたい',materials:'資料請求',trial:'無料トライアル',search:'エリア検索',load_more:'さらに10件',refresh:'案件を更新',filter_add:'絞り込み条件を追加',filter_clear:'絞り込みを解除',filter_remove:'絞り込み条件を削除',calendar:'Web予約リンク',list_jump:'案件一覧へ移動',prefecture:'都道府県を選択',city:'市区町村を選択',national:'全国へ戻る',other_details:'その他の物件情報',submit:'フォーム送信ボタン',close_form:'フォームを閉じる',page_view:'ページ表示',heartbeat:'閲覧時間更新',area_search:'エリア表示',filter_apply:'絞り込み',conversion:'問い合わせ受付'};
-let key='';try{key=new URLSearchParams(location.hash.slice(1)).get('key')||sessionStorage.getItem('lead-map-admin')||'';history.replaceState(null,'',location.pathname);if(key)sessionStorage.setItem('lead-map-admin',key)}catch{}
+let adminPage=location.hash==='#links'?'links':'activity';
+let key='';try{key=new URLSearchParams(location.hash.slice(1)).get('key')||sessionStorage.getItem('lead-map-admin')||'';history.replaceState(null,'',location.pathname+(adminPage==='links'?'#links':''));if(key)sessionStorage.setItem('lead-map-admin',key)}catch{}
 async function api(body){const c=new AbortController(),t=setTimeout(()=>c.abort(),20000);try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json','x-lead-map-admin':key},body:JSON.stringify(body),signal:c.signal,referrerPolicy:'no-referrer',credentials:'omit',cache:'no-store'});if(r.status===403)throw Error('管理キーが正しくありません。専用URLをご確認ください。');if(!r.ok)throw Error('取得できませんでした。もう一度更新してください。');return await r.json()}finally{clearTimeout(t)}}
 const empty=(n)=>'<tr><td colspan="'+n+'">まだ記録はありません。</td></tr>';
 async function load(){
  el('adminStatus').textContent='利用状況を取得しています…';el('refreshReport').disabled=true;
  try{
   const r=await api({api:'admin_report',days:Number(el('days').value)});
-  el('loginPanel').hidden=true;el('report').hidden=false;el('logout').hidden=false;el('adminStatus').textContent='';el('generated').textContent=stamp(r.generated_at)+' 更新';
+  el('loginPanel').hidden=true;el('report').hidden=false;showAdminPage(adminPage);el('logout').hidden=false;el('adminStatus').textContent='';el('generated').textContent=stamp(r.generated_at)+' 更新';
   el('visits').textContent=Number(r.visits).toLocaleString('ja-JP');el('views').textContent=Number(r.page_views).toLocaleString('ja-JP');el('duration').textContent=duration(r.visits?Number(r.active_seconds)*1000/Number(r.visits):0);el('cvs').textContent=Number(r.conversions).toLocaleString('ja-JP');
   if(typeof renderCompanyActivity==='function')renderCompanyActivity(r);
   el('buttons').innerHTML=(r.buttons||[]).map(x=>'<tr><td>'+esc(labels[x.action]||x.action)+'</td><td>'+esc(x.clicks)+'</td><td>'+esc(x.visits)+'</td></tr>').join('')||empty(3);
@@ -27,3 +28,10 @@ el('refreshReport').addEventListener('click',load);el('days').addEventListener('
 el('sessions').addEventListener('click',async e=>{const b=e.target.closest('[data-visit]');if(!b)return;b.disabled=true;try{const r=await api({api:'admin_timeline',visit_id:b.dataset.visit});el('timelineTitle').textContent='操作の足跡：'+b.dataset.visit.slice(0,8);el('timeline').innerHTML=(r.events||[]).map(x=>'<tr><td>'+stamp(x.created_at)+'</td><td>'+esc(labels[x.action]||labels[x.kind]||x.kind)+'</td><td>'+esc([x.area,x.case_id,x.field].filter(Boolean).join(' / '))+'</td><td>'+duration(x.active_ms)+'</td></tr>').join('')||empty(4);el('timelinePanel').hidden=false;el('timelinePanel').scrollIntoView({behavior:'smooth',block:'start'})}catch(e){el('adminStatus').textContent=e.message}finally{b.disabled=false}});
 el('contacts').addEventListener('click',async e=>{const b=e.target.closest('[data-retry]');if(!b)return;b.disabled=true;try{await api({api:'admin_retry_chat',request_id:b.dataset.retry});await load()}catch(e){el('adminStatus').textContent=e.message}finally{b.disabled=false}});
 if(key)load();
+
+function showAdminPage(page){
+ adminPage=page==='links'?'links':'activity';el('analyticsView').hidden=adminPage==='links';el('linkView').hidden=adminPage!=='links';
+ document.querySelectorAll('[data-admin-page]').forEach(a=>{if(a.dataset.adminPage===adminPage)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+ document.title=adminPage==='links'?'会社別URLの発行 | madoguchi':'案件エリアマップ｜利用状況管理';
+}
+window.addEventListener('hashchange',()=>{if(['#links','#activity'].includes(location.hash))showAdminPage(location.hash==='#links'?'links':'activity');});

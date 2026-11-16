@@ -1,1 +1,351 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow"><title>案件エリアマップ｜利用状況管理</title><link rel="stylesheet" href="style.css?v=17"><link rel="stylesheet" href="admin.css?v=17"><script defer src="admin.js?v=17"></script><script defer src="admin-companies.js?v=17"></script></head><body class="admin-page"><header class="admin-header"><div><small>madoguchi / INTERNAL</small><h1>案件エリアマップ 利用状況</h1></div><button id="logout" type="button" hidden>管理画面を閉じる</button></header><main class="admin-main"><section id="loginPanel" class="admin-section"><h2>管理者用の画面です</h2><p>専用URLから開くか、管理キーを入力してください。閲覧用URLのキーではログインできません。</p><form id="loginForm"><label for="adminKey">管理キー</label><input id="adminKey" type="password" autocomplete="off" required><button class="primary" type="submit">利用状況を見る</button></form></section><p id="adminStatus" role="status"></p><div id="report" hidden><div class="admin-toolbar"><div><label for="days">集計期間</label><select id="days"><option value="1">直近24時間</option><option value="7" selected>直近7日</option><option value="30">直近30日</option></select></div><button id="refreshReport" type="button">最新に更新</button><span id="generated"></span></div><section class="admin-metrics" aria-label="利用状況の集計"><div><span>訪問セッション</span><strong id="visits">—</strong></div><div><span>ページ表示</span><strong id="views">—</strong></div><div><span>平均アクティブ閲覧</span><strong id="duration">—</strong></div><div><span>お問い合わせ（CV）</span><strong id="cvs">—</strong></div></section><p class="admin-note">閲覧時間は、画面が表示され、直近60秒以内に操作がある間の概算です。15秒ごとの送信のため、閉じ方や通信状況で短く記録されることがあります。匿名セッション単位であり、実人数ではありません。記録は計測導入後のみです。</p><section class="admin-section"><h2>会社ごとの反応</h2><p id="companySummary"></p><p class="admin-note">専用URLの送付先会社として表示します。URLが転送された場合も元の送付先として記録され、操作した個人の本人確認はできません。アクセス数にはメールの自動確認が含まれる可能性があるため、ボタン操作の有無も確認してください。</p><div class="table-wrap"><table><thead><tr><th>送付先会社</th><th>最終記録</th><th>訪問</th><th>合計閲覧時間</th><th>ボタン操作</th><th>CV</th></tr></thead><tbody id="companyActivity"></tbody></table></div></section><details class="admin-section company-link-panel"><summary>メール・SMS・LINE用の会社別URLを発行する</summary><p>1. 会社名と、メールまたは会社ID・電話番号を貼り付けます。メールなしでも登録できます。<br>2. 現在お使いの、案件を閲覧できるURLを入力します。<br>3. 発行したURLをSMS・LINEで共有するか、CSVのURL列をメール本文へ差し込みます。</p><form id="companyLinkForm"><label for="companyBaseURL">現在お使いの閲覧URL（閲覧キー付き）</label><input id="companyBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://kame0483.github.io/madoguchi-lead-map/?k=…"><p class="admin-note">閲覧URLはリンク作成のために、この画面の中だけで使用します。会社の一覧と一緒にサーバーへ保存しません。管理画面のURLや管理キーは入力しないでください。</p><label for="companyRows">会社名・メール（任意）・会社ID／電話番号</label><textarea id="companyRows" rows="6" placeholder="会社名&#9;メールアドレス&#9;会社ID・電話番号&#10;○○工務店&#9;&#9;MF-0001"></textarea><label for="companyFile">またはCSVを読み込む</label><input id="companyFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values"><div class="company-link-actions"><button id="generateCompanyLinks" class="primary" type="submit">会社別URLを発行する</button><button id="loadCompanyLinks" type="button">登録済みを読み込む</button><button id="downloadCompanyLinks" type="button" disabled>URL付きCSVをダウンロード</button></div></form><p id="companyLinkStatus" role="status"></p><div class="table-wrap"><table><thead><tr><th>会社名</th><th>メールアドレス</th><th>URL（最初の10件）</th></tr></thead><tbody id="companyLinksPreview"></tbody></table></div><p class="admin-note">メールがある場合は従来の会社名・メール2列で登録できます。メールなしの場合は「会社名／会社ID」または「会社名／電話番号」の見出し付き2列、もしくはメール欄を空にした3列を使ってください。会社名だけでは登録しません。URLにはランダムなIDのみを追加します。会社名やメールアドレスは埋め込みません。通常の共通URLからの訪問は、問い合わせ送信前は匿名です。この画面からメールの配信は行いません。</p></details><section class="admin-section"><h2>押されたボタン</h2><div class="table-wrap"><table><thead><tr><th>操作</th><th>クリック数</th><th>セッション数</th></tr></thead><tbody id="buttons"></tbody></table></div></section><section class="admin-section"><h2>日別の利用状況</h2><div class="table-wrap"><table><thead><tr><th>日付（日本時間）</th><th>訪問</th><th>ページ表示</th></tr></thead><tbody id="daily"></tbody></table></div></section><section class="admin-section"><h2>訪問履歴 <small>最新100セッション</small></h2><p class="admin-note">会社別URLからの訪問は、問い合わせ前でも送付先会社を表示します。共通URLからの訪問は匿名です。フォームの会社名は本人確認済みとは限りません。</p><div class="table-wrap"><table><thead><tr><th>最終記録</th><th>会社／匿名ID</th><th>端末</th><th>閲覧時間</th><th>クリック</th><th>CV</th><th>足跡</th></tr></thead><tbody id="sessions"></tbody></table></div></section><section id="timelinePanel" class="admin-section" hidden><h2 id="timelineTitle">操作の足跡</h2><div class="table-wrap"><table><thead><tr><th>日時</th><th>操作</th><th>対象</th><th>経過</th></tr></thead><tbody id="timeline"></tbody></table></div></section><section class="admin-section"><h2>お問い合わせ <small>最新100件</small></h2><p>メール通知先：t.kamei@madoguchi.inc ／ Google Chatへ直接通知</p><p id="chatWarning" class="form-error" hidden></p><div class="table-wrap"><table><thead><tr><th>受付</th><th>用件・案件</th><th>会社・担当者</th><th>連絡先</th><th>電話希望</th><th>通知状態</th></tr></thead><tbody id="contacts"></tbody></table></div><p class="admin-note">メール欄の「受付応答確認」はFormSubmitの応答を確認した状態です。受信箱への到達を保証するものではありません。Chatの再送は明確に失敗した場合だけ可能です。</p></section></div></main></body></html>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<title>案件エリアマップ｜利用状況管理</title>
+<link rel="stylesheet" href="style.css?v=18">
+<link rel="stylesheet" href="admin.css?v=18">
+<script defer src="admin.js?v=18">
+</script>
+<script defer src="admin-companies.js?v=18">
+</script>
+</head>
+<body class="admin-page">
+<header class="admin-header">
+<div>
+<small>madoguchi / INTERNAL</small>
+<h1>案件エリアマップ管理</h1>
+</div>
+<button id="logout" type="button" hidden>管理画面を閉じる</button>
+</header>
+<main class="admin-main">
+<section id="loginPanel" class="admin-section">
+<h2>管理者用の画面です</h2>
+<p>専用URLから開くか、管理キーを入力してください。閲覧用URLのキーではログインできません。</p>
+<form id="loginForm">
+<label for="adminKey">管理キー</label>
+<input id="adminKey" type="password" autocomplete="off" required>
+<button class="primary" type="submit">管理画面を開く</button>
+</form>
+</section>
+<p id="adminStatus" role="status">
+</p>
+<div id="report" hidden>
+<nav class="admin-page-nav" aria-label="管理メニュー">
+<a href="#activity" data-admin-page="activity" aria-current="page">利用状況</a>
+<a href="#links" data-admin-page="links">会社別URLの発行</a>
+</nav>
+<section id="analyticsView">
+<div class="admin-toolbar">
+<div>
+<label for="days">集計期間</label>
+<select id="days">
+<option value="1">直近24時間</option>
+<option value="7" selected>直近7日</option>
+<option value="30">直近30日</option>
+</select>
+</div>
+<button id="refreshReport" type="button">最新に更新</button>
+<span id="generated">
+</span>
+</div>
+<section class="admin-metrics" aria-label="利用状況の集計">
+<div>
+<span>訪問セッション</span>
+<strong id="visits">—</strong>
+</div>
+<div>
+<span>ページ表示</span>
+<strong id="views">—</strong>
+</div>
+<div>
+<span>平均アクティブ閲覧</span>
+<strong id="duration">—</strong>
+</div>
+<div>
+<span>お問い合わせ（CV）</span>
+<strong id="cvs">—</strong>
+</div>
+</section>
+<p class="admin-note">閲覧時間は、画面が表示され、直近60秒以内に操作がある間の概算です。15秒ごとの送信のため、閉じ方や通信状況で短く記録されることがあります。匿名セッション単位であり、実人数ではありません。記録は計測導入後のみです。</p>
+<section class="admin-section">
+<h2>会社ごとの反応</h2>
+<p id="companySummary">
+</p>
+<p class="admin-note">専用URLの送付先会社として表示します。URLが転送された場合も元の送付先として記録され、操作した個人の本人確認はできません。アクセス数にはメールの自動確認が含まれる可能性があるため、ボタン操作の有無も確認してください。</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>送付先会社</th>
+<th>最終記録</th>
+<th>訪問</th>
+<th>合計閲覧時間</th>
+<th>ボタン操作</th>
+<th>CV</th>
+</tr>
+</thead>
+<tbody id="companyActivity">
+</tbody>
+</table>
+</div>
+</section>
+<section class="admin-section">
+<h2>押されたボタン</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>クリック数</th>
+<th>セッション数</th>
+</tr>
+</thead>
+<tbody id="buttons">
+</tbody>
+</table>
+</div>
+</section>
+<section class="admin-section">
+<h2>日別の利用状況</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>日付（日本時間）</th>
+<th>訪問</th>
+<th>ページ表示</th>
+</tr>
+</thead>
+<tbody id="daily">
+</tbody>
+</table>
+</div>
+</section>
+<section class="admin-section">
+<h2>訪問履歴 <small>最新100セッション</small>
+</h2>
+<p class="admin-note">会社別URLからの訪問は、問い合わせ前でも送付先会社を表示します。共通URLからの訪問は匿名です。フォームの会社名は本人確認済みとは限りません。</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>最終記録</th>
+<th>会社／匿名ID</th>
+<th>端末</th>
+<th>閲覧時間</th>
+<th>クリック</th>
+<th>CV</th>
+<th>足跡</th>
+</tr>
+</thead>
+<tbody id="sessions">
+</tbody>
+</table>
+</div>
+</section>
+<section id="timelinePanel" class="admin-section" hidden>
+<h2 id="timelineTitle">操作の足跡</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>日時</th>
+<th>操作</th>
+<th>対象</th>
+<th>経過</th>
+</tr>
+</thead>
+<tbody id="timeline">
+</tbody>
+</table>
+</div>
+</section>
+<section class="admin-section">
+<h2>お問い合わせ <small>最新100件</small>
+</h2>
+<p>メール通知先：t.kamei@madoguchi.inc ／ Google Chatへ直接通知</p>
+<p id="chatWarning" class="form-error" hidden>
+</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>受付</th>
+<th>用件・案件</th>
+<th>会社・担当者</th>
+<th>連絡先</th>
+<th>電話希望</th>
+<th>通知状態</th>
+</tr>
+</thead>
+<tbody id="contacts">
+</tbody>
+</table>
+</div>
+<p class="admin-note">メール欄の「受付応答確認」はFormSubmitの応答を確認した状態です。受信箱への到達を保証するものではありません。Chatの再送は明確に失敗した場合だけ可能です。</p>
+</section>
+</section>
+<section id="linkView" class="issuer-view" hidden aria-labelledby="issuerTitle">
+ <div class="issuer-heading">
+<div>
+<p class="issuer-eyebrow">会社別のアクセス計測</p>
+<h2 id="issuerTitle">共有用URLを発行する</h2>
+<p>送付先の会社にひも付くURLを作成します。メールがない業者にも使えます。</p>
+</div>
+<a class="issuer-help-link" href="#issuerHelp">使い方を見る</a>
+</div>
+ <section class="issuer-base" aria-labelledby="issuerBaseTitle">
+<div class="issuer-step-heading">
+<span class="issuer-step">01</span>
+<div>
+<h3 id="issuerBaseTitle">共有するページを指定</h3>
+<p>案件が表示できる、業者向けの閲覧URLを貼り付けてください。</p>
+</div>
+</div>
+<label class="issuer-label" for="companyBaseURL">案件マップの閲覧URL</label>
+<input id="companyBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://kame0483.github.io/madoguchi-lead-map/?k=…" aria-describedby="baseURLHint baseURLStatus">
+<div class="issuer-base-meta">
+<p id="baseURLHint">この管理画面のURLや管理キーではありません。</p>
+<p id="baseURLStatus" role="status">
+</p>
+</div>
+</section>
+ <div class="issuer-workbench">
+<section class="issuer-entry" aria-labelledby="issuerEntryTitle">
+<div class="issuer-step-heading">
+<span class="issuer-step">02</span>
+<div>
+<h3 id="issuerEntryTitle">会社を指定</h3>
+<p>発行する件数に合わせて選んでください。</p>
+</div>
+</div>
+  <div class="issuer-modes" role="group" aria-label="発行する方法">
+<button type="button" data-issuer-mode="single" aria-pressed="true">1社だけ発行</button>
+<button type="button" data-issuer-mode="bulk" aria-pressed="false">まとめて発行</button>
+<button id="loadCompanyLinks" type="button" data-issuer-mode="registered" aria-pressed="false">登録済みから選ぶ</button>
+</div>
+  <div id="issuerSingle" class="issuer-pane">
+<form id="singleCompanyForm" novalidate>
+<div class="issuer-field">
+<label for="singleCompanyName">会社名 <span>必須</span>
+</label>
+<input id="singleCompanyName" type="text" maxlength="120" autocomplete="organization" placeholder="例：○○工務店" required>
+</div>
+<div class="issuer-field">
+<label for="singleCompanyType">会社の識別に使う情報</label>
+<select id="singleCompanyType">
+<option value="phone">電話番号</option>
+<option value="email">メールアドレス</option>
+<option value="ref">会社ID（MFなど）</option>
+</select>
+</div>
+<div class="issuer-field">
+<label id="singleContactLabel" for="singleCompanyContact">電話番号 <span>必須</span>
+</label>
+<input id="singleCompanyContact" type="tel" autocomplete="off" placeholder="例：090-1234-5678" maxlength="120" required>
+<p id="singleContactHint">同じ会社を区別するために使います。メールアドレスは不要です。</p>
+</div>
+<button id="generateSingleCompany" class="issuer-primary" type="submit">専用URLを発行する <span aria-hidden="true">→</span>
+</button>
+<p id="singleCompanyStatus" class="issuer-form-status" role="status" tabindex="-1">
+</p>
+</form>
+</div>
+  <div id="issuerBulk" class="issuer-pane" hidden>
+<p class="issuer-pane-intro">シートから貼り付けるか、CSVを読み込んでください。</p>
+<div class="issuer-example">
+<span>貼り付け例：メールがない場合</span>
+<table>
+<thead>
+<tr>
+<th>会社名</th>
+<th>電話番号</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>○○工務店</td>
+<td>090-1234-5678</td>
+</tr>
+</tbody>
+</table>
+<button id="insertCompanyExample" type="button">この列の見出しを入力する</button>
+</div>
+<form id="companyLinkForm" novalidate>
+<div class="issuer-field">
+<label for="companyRows">会社の一覧</label>
+<textarea id="companyRows" rows="7" spellcheck="false" placeholder="会社名&#9;電話番号&#10;○○工務店&#9;090-1234-5678">
+</textarea>
+<p>「会社名＋メール」または「会社名＋電話番号・会社ID」に対応。先頭に列名を含めて貼り付けてください。</p>
+</div>
+<label class="issuer-file" for="companyFile">
+<span>CSV・TSVから読み込む</span>
+<input id="companyFile" type="file" accept=".csv,.tsv,text/csv,text/tab-separated-values">
+<small id="companyFileName">ファイル未選択</small>
+</label>
+<button id="generateCompanyLinks" class="issuer-primary" type="submit">一覧からURLを発行する <span aria-hidden="true">→</span>
+</button>
+</form>
+</div>
+  <div id="issuerRegistered" class="issuer-pane" hidden>
+<h4>発行済みの会社を読み込みます</h4>
+<p>発行済みの会社を、会社名・電話番号・メールで検索できます。同じURLをそのまま再利用できます。</p>
+<button id="reloadCompanyLinks" type="button" class="issuer-secondary">登録済み一覧を更新する</button>
+</div>
+<p id="companyLinkStatus" class="issuer-form-status" role="status" tabindex="-1">
+</p>
+ </section>
+ <section class="issuer-results" id="companyResults" aria-labelledby="issuerResultTitle">
+<div class="issuer-step-heading">
+<span class="issuer-step">03</span>
+<div>
+<h3 id="issuerResultTitle">URLをコピーして共有</h3>
+<p>SMS・LINEで共有するか、一斉メール用にCSVへ出力できます。</p>
+</div>
+</div>
+<div id="issuedEmpty" class="issuer-empty">
+<div class="issuer-empty-mark" aria-hidden="true">↗</div>
+<h4>発行したURLがここに表示されます</h4>
+<p>会社名と電話番号などを入力してください。<br>メールアドレスがなくても発行できます。</p>
+</div>
+<div id="issuedContent" hidden>
+<div class="issued-toolbar">
+<p id="issuedSummary" role="status">
+</p>
+<button id="downloadCompanyLinks" class="issuer-export" type="button" disabled>全件をCSVで保存</button>
+</div>
+<label class="issuer-search" for="companyResultSearch">
+<span>発行済みの会社を検索</span>
+<input id="companyResultSearch" type="search" placeholder="会社名・電話番号・メールで検索" autocomplete="off">
+</label>
+<div id="companyLinksPreview" class="issued-company-list">
+</div>
+<div id="issuedPagination" class="issued-pagination">
+<button id="issuedPrevious" type="button">前の10件</button>
+<p id="issuedPageStatus" role="status">
+</p>
+<button id="issuedNext" type="button">次の10件</button>
+</div>
+</div>
+</section>
+</div>
+ <details id="issuerHelp" class="issuer-help">
+<summary>使い方・登録できる一覧の形式</summary>
+<div>
+<p>
+<strong>1社だけ発行：</strong>会社名と、電話番号・メール・会社IDのいずれかを入力します。発行後の「URLをコピー」で業者へ共有できます。</p>
+<p>
+<strong>まとめて発行：</strong>会社名・メールの2列、会社名・電話番号（会社ID）の2列、会社名・メール・会社IDの3列に対応しています。メールがない場合は、電話番号または会社IDを入力してください。</p>
+<p>URLには会社名や電話番号を含めません。専用URLの転送先で操作された場合も、元の送付先会社として記録されます。この画面からメールやSMSの送信は行いません。</p>
+<p>閲覧URLはこの画面でリンク作成に使い、会社の一覧と一緒にサーバーへ保存しません。</p>
+</div>
+</details>
+</section>
+</div>
+</main>
+</body>
+</html>

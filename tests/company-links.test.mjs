@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-const nodes=new Map(),el=id=>{if(!nodes.has(id))nodes.set(id,{addEventListener(){},value:'',disabled:false,innerHTML:'',textContent:''});return nodes.get(id)};
-const c={el,URL,Blob,setTimeout,console,esc:String,empty:()=>'',stamp:String,duration:String};vm.createContext(c);vm.runInContext(readFileSync(new URL('../admin-companies.js',import.meta.url),'utf8'),c);
+const nodes=new Map(),el=id=>{if(!nodes.has(id))nodes.set(id,{addEventListener(){},value:'',disabled:false,innerHTML:'',textContent:'',setAttribute(){},scrollIntoView(){},focus(){}});return nodes.get(id)};
+const c={el,URL,Blob,setTimeout,console,document:{querySelectorAll:()=>[],querySelector:()=>({addEventListener(){}})},esc:String,empty:()=>'',stamp:String,duration:String};vm.createContext(c);vm.runInContext(readFileSync(new URL('../admin-companies.js',import.meta.url),'utf8'),c);
 c.text='会社名\tメールアドレス\r\n確認会社\tSales@example.invalid\r\n';let rows=vm.runInContext('parseCompanyList(text)',c);assert.equal(rows.length,1);assert.equal(rows[0].company_name,'確認会社');assert.equal(rows[0].recipient_email,'sales@example.invalid');
 c.text='会社名,メールアドレス\n"確認,工務店",qa@example.invalid\n"確認""会社",qa2@example.invalid';rows=vm.runInContext('parseCompanyList(text)',c);assert.equal(rows[0].company_name,'確認,工務店');assert.equal(rows[1].company_name,'確認"会社');
 for(const text of ['','会社名,メールアドレス\n会社,bad','"unclosed,qa@example.invalid','会社,qa@example.invalid,extra,fourth']){c.text=text;assert.throws(()=>vm.runInContext('parseCompanyList(text)',c));}
@@ -20,3 +20,14 @@ c.text='会社名\t電話番号\nメールなし工務店\t０９０－０００
 c.text='会社名,会社ID\n同名工務店,MF-A\n同名工務店,MF-B';rows=vm.runInContext('parseCompanyList(text)',c);assert.equal(rows[0].external_ref,'MF-A');assert.equal(rows[1].external_ref,'MF-B');
 for(const text of ['会社名,メールアドレス,会社ID・電話番号\n会社,,','会社名,会社ID\n会社,','会社名,メールアドレス,会社ID・電話番号\n会社,bad,MF-1']){c.text=text;assert.throws(()=>vm.runInContext('parseCompanyList(text)',c));}
 console.log('Optional email: 2-column legacy lists, ID/phone alternatives and missing-identity rejection passed');
+
+// Search/pagination must retain original indexes so copy never selects another company.
+c.companies=Array.from({length:1200},(_,i)=>({company_name:'確認会社'+i,recipient_email:'qa'+i+'@example.invalid',external_ref:String(i),code:String(i).padStart(32,'0')}));
+let page=vm.runInContext("companyResultPage(companies,'',119)",c);assert.equal(page.rows.length,10);assert.equal(page.rows[0].index,1190);assert.equal(page.rows[9].index,1199);assert.equal(page.last,119);
+page=vm.runInContext("companyResultPage(companies,'qa1199@',0)",c);assert.equal(page.total,1);assert.equal(page.rows[0].index,1199);
+assert.equal(vm.runInContext("companyResultPage(companies,'存在しない会社',999).rows.length",c),0);
+assert.equal(vm.runInContext("singleCompanyEntry('確認工務店','phone','＋８１ ９０－１２３４－５６７８').external_ref",c),'09012345678');
+assert.equal(vm.runInContext("singleCompanyEntry('確認工務店','email','Sales@example.invalid').recipient_email",c),'sales@example.invalid');
+assert.equal(vm.runInContext("singleCompanyEntry('確認工務店','ref','MF-0001').external_ref",c),'MF-0001');
+for(const expr of ["singleCompanyEntry('','phone','09012345678')","singleCompanyEntry('会社','phone','123')","singleCompanyEntry('会社','email','bad')","singleCompanyEntry('会社','ref','')"]){assert.throws(()=>vm.runInContext(expr,c));}
+console.log('Single-company input and 1,200-company search/pagination with stable copy indexes passed');
