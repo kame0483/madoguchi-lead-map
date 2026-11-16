@@ -1,13 +1,13 @@
 "use strict";
 const contactDialog=document.getElementById("contactDialog");
-let contactRequestedArea="",contactAction="conditions",contactCaseId=null,contactOpener=null,contactOpenVersion=0,contactSubmitting=false,contactSubmissionId=null,contactSubmissionBody=null;
+let contactRequestedArea="",contactAction="conditions",contactCaseId=null,contactOpener=null,contactOpenVersion=0,contactSubmitting=false,contactSubmissionId=null,contactSubmissionBody=null,contactNavigating=false;
 const contactEl=id=>document.getElementById(id);
 function contactIsDemo(){return typeof IS_DEMO!=="undefined"&&IS_DEMO;}
 const contactIntents={
- respond:{label:"この案件への対応希望",heading:"ありがとうございます！",intro:"弊社の担当者からお電話いたします。御社の連絡先と、ご都合のよい日時をお知らせください。",submit:"この案件の対応について連絡を依頼する",success:"ご希望を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、案件の紹介可否や条件をご案内します。"},
+ respond:{label:"この案件への対応希望",heading:"この案件について相談する",intro:"Webで直接ご相談する方は、下の予約ボタンから日時をお選びください。折り返し電話をご希望の方は、フォームをご入力ください。",submit:"この案件の対応について連絡を依頼する",success:"ご希望を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、案件の紹介可否や条件をご案内します。"},
  conditions:{label:"案件・紹介条件のご相談",heading:"気になることから、ご相談ください。",intro:"紹介条件や対応エリアについて、担当者が個別にご案内します。御社の連絡先をお知らせください。",submit:"条件について相談する",success:"ご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、ご希望のエリアや紹介条件をお伺いします。"},
- materials:{label:"サービス資料のご請求",heading:"資料ダウンロード",intro:"サービス検討ガイドと営業準備シート3点を、送信完了後にその場でダウンロードできます。",submit:"送信して、無料の資料を受け取る",success:"資料請求を受け付けました",next:"担当者から、ご入力のメールアドレスへ資料をご案内します。内容の確認のため、お電話する場合があります。"},
- trial:{label:"無料トライアルのご相談",heading:"無料トライアル相談",intro:"御社の対応エリアや稼働状況に合うか、担当者がご案内します。営業準備シート3点も、送信完了後に無料で受け取れます。",submit:"無料トライアルを相談して、資料を受け取る",success:"トライアルのご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、対象エリアや実施条件をご案内します。"}
+ materials:{label:"サービス資料のご請求",heading:"無料の資料請求",intro:"御社の検討に必要なサービス資料を、営業担当からメールでお送りします。気になる点も一緒にお知らせください。",submit:"無料で資料を請求する",success:"資料請求を受け付けました",next:"担当者から、ご入力のメールアドレスへ資料をご案内します。内容の確認のため、お電話する場合があります。"},
+ trial:{label:"無料トライアルのご相談",heading:"無料トライアル相談",intro:"御社の対応エリアや稼働状況に合うか、担当者がご案内します。ご希望の条件や気になる点も、一緒にお知らせください。",submit:"無料トライアルについて問い合わせる",success:"トライアルのご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、対象エリアや実施条件をご案内します。"}
 };
 const CONTACT_FORM_ENDPOINT="https://formsubmit.co/ajax/t.kamei@madoguchi.inc";
 function contactNotification(data){
@@ -15,11 +15,12 @@ function contactNotification(data){
  const subject="【資料ダウンロード】"+contactIntents[data.action].label+" / "+data.company_name;
  return {_subject:subject,_template:"table",email:data.email,
  "受付番号":data.request_id,"ご用件":contactIntents[data.action].label,"会社名":data.company_name,"担当者名":data.contact_name,"電話番号":data.phone,"メールアドレス":data.email,
- "電話可能日":data.preferred_window==="now"?"今すぐの連絡を希望":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="now"?"今すぐ":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般","希望エリア":data.requested_area||[c?.pref,c?.city].filter(Boolean).join(" ")||"指定なし"};
+ "質問・ご要望":data.message||"記入なし","電話可能日":data.preferred_window==="now"?"今すぐの連絡を希望":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="now"?"今すぐ":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般","希望エリア":data.requested_area||[c?.pref,c?.city].filter(Boolean).join(" ")||"指定なし"};
 }
 async function contactRequest(data){
  if(contactIsDemo())throw new Error("デモ画面のため送信は行いません。");
  const registered=await call({api:"conversion_submit",...data,visit_id:window.LeadMapActivity?.id||null});
+ if(data.form_version===2){contactNativeSend(data);return {request_id:data.request_id,pending_navigation:true};}
  if(registered.email_acknowledged)return {request_id:data.request_id};
  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),25000);
  try{
@@ -34,11 +35,21 @@ async function contactRequest(data){
   return {request_id:data.request_id};
  }catch(e){if(e.name==="AbortError")throw new Error("送信結果を確認できませんでした。再送すると重複する場合があります。お急ぎの場合は下の予約ページをご利用ください。");if(e.name==="TypeError")throw new Error("通信を完了できませんでした。接続状況を確認するか、下のメール窓口・予約ページをご利用ください。");throw e;}finally{clearTimeout(timer)}
 }
+function contactStoreSummary(result,payload){const summary={request_id:result.request_id,action:payload.action,preferred_date:payload.preferred_date,preferred_window:payload.preferred_window};try{sessionStorage.setItem('lead-map-confirmation',JSON.stringify(summary))}catch{}}
+function contactNativeSend(data){
+ contactStoreSummary({request_id:data.request_id},data);
+ const form=document.createElement('form');form.method='POST';form.action='https://formsubmit.co/t.kamei@madoguchi.inc';form.hidden=true;
+ const next=new URL('thanks.html',location.href);next.hash=new URLSearchParams({receipt:data.request_id,intent:data.action,delivery:'formsubmit'}).toString();
+ const fields={...contactNotification(data),_next:next.href,_autoresponse:'お問い合わせありがとうございます。madoguchi株式会社です。担当者が内容を確認し、ご入力の連絡先へご案内します。資料は営業担当からメールでお送りします。お電話の希望時間は確定予約ではありません。Webで直接ご相談する場合はこちらから日時をお選びください。 https://calendar.app.google/mRRBUfa9pHoPJVxeA この送信だけで契約・案件購入が確定することはありません。'};
+ for(const [name,value] of Object.entries(fields)){const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value);form.append(input);}
+ document.body.append(form);window.LeadMapActivity?.track('conversion',{action:data.action,case_id:data.case_id||''});form.submit();contactNavigating=true;
+}
 function contactToday(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10)}
-function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").disabled=busy;contactEl("contactSubmit").textContent=busy?"送信しています…":contactIsDemo()?"デモで入力の流れを確認する":contactIntents[contactAction].submit;contactEl("contactClose").disabled=busy;contactEl("contactForm").querySelectorAll("input,select,button").forEach(el=>el.disabled=busy||(!busy&&el.id==="contactDate"&&contactEl("contactForm").querySelector('input[name="callback_time"]:checked')?.value==="now"));}
+function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").disabled=busy;contactEl("contactSubmit").textContent=busy?"送信しています…":contactIsDemo()?"デモで入力の流れを確認する":contactIntents[contactAction].submit;contactEl("contactClose").disabled=busy;contactEl("contactForm").querySelectorAll("input,select,textarea,button").forEach(el=>el.disabled=busy||(!busy&&el.id==="contactDate"&&contactEl("contactForm").querySelector('input[name="callback_time"]:checked')?.value==="now"));}
 async function openContactDialog(action,caseId,opener){
  if(contactSubmitting)return;
- const version=++contactOpenVersion;contactAction=Object.hasOwn(contactIntents,action)?action:"conditions";contactCaseId=caseId||null;contactOpener=opener;contactSubmissionId=null;contactSubmissionBody=null;
+ const version=++contactOpenVersion;
+ if(opener?.dataset?.contactMessage&&!contactEl('contactMessage').value.trim())contactEl('contactMessage').value=opener.dataset.contactMessage;contactAction=Object.hasOwn(contactIntents,action)?action:"conditions";contactCaseId=caseId||null;contactOpener=opener;contactSubmissionId=null;contactSubmissionBody=null,contactNavigating=false;
  const c=contactCaseId?contactCases.get(contactCaseId):null;contactRequestedArea=typeof view!=="undefined"&&view.label!=="全国"?view.label:"";
  const intent=contactIntents[contactAction];
  const withKit=['materials','trial'].includes(contactAction);
@@ -73,7 +84,7 @@ function contactDemoResult(payload){
  contactEl('contactReceiptNote').textContent='メール・Google Chatへの通知、入力内容の保存、予約は行っていません。';
  contactEl('contactRequestNumber').textContent='DEMO（保存なし）';contactEl('contactSavedPhone').textContent=payload.phone;
  contactEl('contactSavedTime').textContent=payload.preferred_window==='now'?'今すぐの連絡を希望':(payload.preferred_date||'日付指定なし')+' ／ '+(payload.preferred_window==='any'?'時間指定なし':payload.preferred_window);
- contactEl('contactResources').hidden=!['materials','trial'].includes(contactAction);
+ contactEl('contactResources').hidden=true;
  contactEl('contactSuccess').scrollIntoView({block:'start',behavior:'auto'});
 }
 function contactShowResult(result,payload){
@@ -91,22 +102,24 @@ async function handleContactSubmit(e){
   const form=contactEl("contactForm");
   for(const id of ["contactCompany","contactName","contactPhone","contactEmail"])contactEl(id).value=contactEl(id).value.trim();
   if(!form.checkValidity()){
-   const invalid=[...form.querySelectorAll("input,select")].filter(el=>el.willValidate&&!el.validity.valid);
-   const labels={company_name:"会社名",contact_name:"担当者名",phone:"電話番号",email:"メールアドレス",preferred_date:"希望日"};
-   contactShowError(invalid.map(el=>labels[el.name]||"入力項目").join("・")+"をご確認ください。必須項目と入力形式を確認してから送信してください。");
+   const invalid=[...form.querySelectorAll("input,select,textarea")].filter(el=>el.willValidate&&!el.validity.valid);
+   const labels={callback_time:"電話の希望時間",message:"質問・ご要望",company_name:"会社名",contact_name:"担当者名",phone:"電話番号",email:"メールアドレス",preferred_date:"希望日"};
+   contactShowError([...new Set(invalid.map(el=>labels[el.name]||"入力項目"))].join("・")+"をご確認ください。必須項目と入力形式を確認してから送信してください。");
    invalid.forEach(el=>el.setAttribute("aria-invalid","true"));return;
   }
-  const payload={action:contactAction,case_id:contactCaseId,company_name:contactEl("contactCompany").value,contact_name:contactEl("contactName").value,phone:contactEl("contactPhone").value.normalize("NFKC").replace(/[\s()（）ー－-]/g,""),email:contactEl("contactEmail").value.toLowerCase(),preferred_date:contactEl("contactDate").value||null,preferred_window:form.querySelector('input[name="callback_time"]:checked')?.value||"any"};
+  const payload={action:contactAction,case_id:contactCaseId,company_name:contactEl("contactCompany").value,contact_name:contactEl("contactName").value,phone:contactEl("contactPhone").value.normalize("NFKC").replace(/[\s()（）ー－-]/g,""),email:contactEl("contactEmail").value.toLowerCase(),preferred_date:contactEl("contactDate").value||null,preferred_window:form.querySelector('input[name="callback_time"]:checked')?.value||"",form_version:2,message:contactEl("contactMessage").value.trim()};
   if(contactRequestedArea)payload.requested_area=contactRequestedArea;
+  if(!payload.preferred_window){contactShowError('電話の希望時間を選んでください。「今すぐ」またはご都合のよい時間帯をお選びください。');return;}
+  if(payload.message.length>1000){contactShowError('質問・ご要望は1000文字以内でご入力ください。');return;}
   if(payload.phone.startsWith("+81"))payload.phone="0"+payload.phone.slice(3);
   if(!/^0[1-9][0-9]{8,9}$/.test(payload.phone)){contactShowError("電話番号は10桁または11桁で入力してください。ハイフン付きでも入力できます。");contactEl("contactPhone").setAttribute("aria-invalid","true");return;}
   if(payload.preferred_window==="now")payload.preferred_date=null;
   if(contactIsDemo()){contactDemoResult(payload);return;}
   const body=JSON.stringify(payload);if(body!==contactSubmissionBody){contactSubmissionId=crypto.randomUUID();contactSubmissionBody=body;}
   contactEl("contactError").hidden=true;contactEl("contactUnavailable").hidden=true;contactSetBusy(true);
-  const result=await contactRequest({request_id:contactSubmissionId,...payload});contactShowResult(result,payload);
+  const result=await contactRequest({request_id:contactSubmissionId,...payload});if(!result.pending_navigation)contactShowResult(result,payload);
  }catch(error){contactShowError(error.message||"送信を完了できませんでした。下のメール窓口、または予約ページをご利用ください。");contactEl("contactUnavailable").hidden=false;}
- finally{contactSetBusy(false)}
+ finally{if(!contactNavigating)contactSetBusy(false)}
 }
 document.addEventListener("click",e=>{const trigger=e.target.closest?.("[data-contact-action]");if(!trigger)return;e.preventDefault();contactEl("contactIntro").querySelector(".dialog-intro").hidden=false;openContactDialog(trigger.dataset.contactAction,trigger.dataset.contactId,trigger).catch(()=>{});});
 contactEl("contactClose").addEventListener("click",closeContactDialog);
@@ -116,3 +129,5 @@ contactEl("contactPhone").addEventListener("input",()=>contactEl("contactPhone")
 document.addEventListener("input",e=>{if(e.target?.matches?.("#contactForm input"))e.target.removeAttribute("aria-invalid")});
 
 document.addEventListener("change",e=>{if(e.target?.name!=="callback_time")return;const now=e.target.value==="now";contactEl("contactDate").disabled=now;if(now)contactEl("contactDate").value="";});
+
+window.addEventListener("pageshow",()=>{contactNavigating=false;contactSetBusy(false)});

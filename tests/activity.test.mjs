@@ -35,3 +35,7 @@ for(const rows of [[{company_name:'会社'}],[{company_name:'会社',external_re
 c.input={...c.input,request_id:'32345678-1234-4123-8123-123456789abc',case_id:null,requested_area:'岡山県'};
 const areaResult=await vm.runInContext('registerConversion(request,input,sb,"qa-hash",hash,"https://chat.example.invalid")',c);assert.equal(areaResult.status,200);assert.equal(records.get(c.input.request_id).case_snapshot.requested_area,'岡山県');assert.ok(sent.at(-1).body.text.includes('岡山県'));assert.ok(!sent.at(-1).body.text.includes('original-customer-address'));
 console.log('Area-only inquiries: selected area is saved before Chat and original-customer data is excluded');
+
+c.input={...c.input,request_id:'42345678-1234-4123-8123-123456789abc',form_version:2,preferred_window:'10:00-11:00',message:'年明けの開始条件を知りたいです。'};
+await vm.runInContext('registerConversion(request,input,sb,"qa-hash",hash,"https://chat.example.invalid")',c);assert.equal(records.get(c.input.request_id).case_snapshot.inquiry_note,c.input.message);assert.ok(sent.at(-1).body.text.includes(c.input.message));
+console.log('Inquiry note: persisted before Chat and included in internal notification');

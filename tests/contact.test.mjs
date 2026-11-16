@@ -47,3 +47,7 @@ for(const action of ['materials','trial']){
  }
 }
 console.log('Materials/trial: all four required fields, distinct internal notifications and truthful applicant receipts passed');
+
+context.input={...base,form_version:2,preferred_window:'any'};assert.throws(()=>vm.runInContext('normalizeContact(input)',context));
+context.input={...base,form_version:2,preferred_window:'09:00-10:00',message:'紹介条件の質問\n希望エリアは岡山です'};assert.equal(vm.runInContext('normalizeContact(input).message',context),context.input.message);context.input.message='x'.repeat(1001);assert.throws(()=>vm.runInContext('normalizeContact(input)',context));
+console.log('New form: callback time is mandatory and bounded multiline questions are accepted server-side');

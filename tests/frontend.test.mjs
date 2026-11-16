@@ -31,3 +31,9 @@ context.publicInput={case_id:'p1',public_preview:true,pref:'千葉県',city:'大
 const rowHTML=vm.runInContext('cardHTML(publicInput)',context);for(const text of ['外壁塗装','20年以上','6ヶ月以内','090-1234-****','案件の詳細を見る','aria-expanded="false"','lead-record-body" hidden'])assert.ok(rowHTML.includes(text),text);
 context.publicInput.needs_status_check=true;assert.ok(vm.runInContext('cardHTML(publicInput)',context).includes('最新の状況を確認する'));
 const demoContext={...context,location:{search:'?demo=campaign&k=must-not-use',href:'https://example.invalid/?demo=campaign'}};vm.createContext(demoContext);vm.runInContext(source,demoContext);assert.equal(vm.runInContext('TOKEN',demoContext),'');const before=calls.length;await assert.rejects(vm.runInContext('call({api:"conversion_submit"})',demoContext),/デモ/);assert.equal(calls.length,before);
+
+context.localPoints=Array.from({length:100},(_,i)=>({key:'city-'+i,city:'市'+i,count:i+1,x:(i*13)%350,y:(i*19)%350}));
+const groups=vm.runInContext('groupLocalMarkers(localPoints,350,350)',context);assert.equal(groups.reduce((n,g)=>n+g.count,0),5050);assert.equal(groups.reduce((n,g)=>n+g.items.length,0),100);
+for(let i=0;i<groups.length;i++)for(let j=i+1;j<groups.length;j++)assert.ok(Math.abs(groups[i].x-groups[j].x)>=110||Math.abs(groups[i].y-groups[j].y)>=54);
+vm.runInContext('snapshot="2026-11-16T12:00:00Z"',context);assert.equal(vm.runInContext('isTodayCase({effective_at:"2026-11-15T15:01:00Z"})',context),true);assert.equal(vm.runInContext('isNewCase({effective_at:"2026-11-10T12:00:00Z"})',context),true);assert.equal(vm.runInContext('isNewCase({effective_at:"2026-11-08T12:00:00Z"})',context),false);assert.deepEqual([...vm.runInContext('SEARCH_RADII',context)],[20,40,60,80]);
+console.log('Regional map: non-overlapping rectangular groups preserve every municipality and count; four ranges and JST fresh labels passed');

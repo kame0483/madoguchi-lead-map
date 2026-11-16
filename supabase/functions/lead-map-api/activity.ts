@@ -17,7 +17,7 @@ const labels:Record<string,string>={respond:'この案件への対応希望',con
 const safe=(v:unknown)=>String(v??'').replace(/[<>&*`]/g,' ').slice(0,300);
 export function chatMessage(r:any){
  const c=r.case_snapshot||{};
- return ['【資料ダウンロード／案件エリアマップ】',labels[r.action]||'お問い合わせ','会社名：'+safe(r.company_name),'担当者名：'+safe(r.contact_name),'電話番号：'+safe(r.phone),'メール：'+safe(r.email),'電話希望：'+(r.preferred_window==='now'?'今すぐの連絡を希望':safe(r.preferred_date||'日付指定なし')+' ／ '+safe(r.preferred_window==='any'?'時間指定なし':r.preferred_window)),'案件ID：'+safe(r.case_id||'案件全般'),'種別・エリア：'+safe(c.service_code==='amamori'?'雨漏り':c.service_code==='gaiheki'?'外壁':'全般')+' '+safe(c.requested_area||[c.pref,c.city].filter(Boolean).join(' ')),'受付番号：'+r.request_id,'※希望日時は確定予約ではありません。'].join('\n');
+ return ['【資料ダウンロード／案件エリアマップ】',labels[r.action]||'お問い合わせ','会社名：'+safe(r.company_name),'担当者名：'+safe(r.contact_name),'電話番号：'+safe(r.phone),'メール：'+safe(r.email),'電話希望：'+(r.preferred_window==='now'?'今すぐの連絡を希望':safe(r.preferred_date||'日付指定なし')+' ／ '+safe(r.preferred_window==='any'?'時間指定なし':r.preferred_window)),'案件ID：'+safe(r.case_id||'案件全般'),'種別・エリア：'+safe(c.service_code==='amamori'?'雨漏り':c.service_code==='gaiheki'?'外壁':'全般')+' '+safe(c.requested_area||[c.pref,c.city].filter(Boolean).join(' ')),'質問・ご要望：'+safe(c.inquiry_note||'記入なし'),'受付番号：'+r.request_id,'※希望日時は確定予約ではありません。'].join('\n');
 }
 export async function postChat(webhook:string,text:string){
  if(!webhook)return {state:'failed',error:'chat_not_configured'};
@@ -43,7 +43,8 @@ export async function registerConversion(req:Request,b:any,sb:any,accessHash:str
  const {data:row,error}=await sb.rpc('lead_map_register_contact_v1',{p_request_id:request_id,p_access_hash:accessHash,p_payload_hash:await hash(JSON.stringify(payload)),p_ip_hash:ip?await hash(accessHash+'|'+ip):null,p_action:input.action,p_case_id:input.case_id,p_company_name:input.company_name,p_contact_name:input.contact_name,p_email:input.email,p_phone:input.phone,p_preferred_date:input.preferred_date,p_preferred_window:input.preferred_window});
  if(error){const m=String(error.message||'');return {status:m.includes('rate_limited')?429:400,body:{error:m.includes('case_unavailable')?'case_unavailable':m.includes('idempotency_conflict')?'idempotency_conflict':'invalid_contact'}};}
  if(b.visit_id&&!row.visit_id)await sb.from('lead_map_contact_requests').update({visit_id:b.visit_id}).eq('request_id',request_id).is('visit_id',null);
- if(!input.case_id&&input.requested_area){const saved=await sb.from('lead_map_contact_requests').update({case_snapshot:{requested_area:input.requested_area}}).eq('request_id',request_id);if(saved.error)return {status:500,body:{error:'area_save_failed'}};}
+ if(input.message||input.requested_area){const saved=await sb.from('lead_map_contact_requests').update({case_snapshot:{...(row.case_snapshot||{}),...(!input.case_id&&input.requested_area?{requested_area:input.requested_area}:{}),...(input.message?{inquiry_note:input.message}:{})}}).eq('request_id',request_id);if(saved.error)return {status:500,body:{error:'area_save_failed'}};}
+
  const state=await deliverChat(sb,request_id,webhook);
  return {status:200,body:{ok:true,request_id,chat_status:state||row.chat_state,email_acknowledged:!!row.email_ack_at}};
 }

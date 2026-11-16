@@ -7,6 +7,8 @@ const CALENDAR_URL="https://calendar.app.google/mRRBUfa9pHoPJVxeA";
 const CONTACT_EMAIL="t.kamei@madoguchi.inc";
 const contactCases=new Map();
 const PAGE_SIZE=10;
+const SEARCH_RADII=[20,40,60,80];
+let localMapPoints=[];
 let caseFilters={};
 const $=id=>document.getElementById(id);
 const fmt=n=>new Intl.NumberFormat("ja-JP").format(Number(n||0));
@@ -55,13 +57,13 @@ function initMap(){
  let tileErrors=0,fallback=false;
  tiles.on('tileerror',()=>{if(++tileErrors<3||fallback)return;fallback=true;tiles.remove();baseTiles=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{maxZoom:12,noWrap:true,bounds,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>'});if(view.kind!=='nation')baseTiles.addTo(map)});
  layer=L.layerGroup().addTo(map);
- map.on('zoomend moveend resize',()=>{if(snapshot&&view.kind==='nation')renderNationalMarkers()});
+ map.on('zoomend moveend resize',()=>{if(!snapshot)return;if(view.kind==='nation')renderNationalMarkers();else renderLocalMarkers()});
 }
 function addMarker(g,label,count,fn,sizeOverride){if(!map)return;const size=sizeOverride??(count>=200?54:count>=50?47:40);
  const html='<div class="map-bubble '+(count>=200?'high':count===0?'zero':'')+'" style="--size:'+size+'px"><b>'+fmt(count)+'</b><span>'+esc(label)+'</span></div>';
  L.marker([g.lat,g.lng],{title:label+' '+fmt(count)+'件',alt:label+' '+fmt(count)+'件',icon:L.divIcon({className:"case-marker",html,iconSize:[size,size],iconAnchor:[0,0]}),zIndexOffset:count}).on("click",()=>run(fn)).addTo(layer);
 }
-function clearMap(){layer?.clearLayers();if(rangeCircle){rangeCircle.remove();rangeCircle=null}}
+function clearMap(){localMapPoints=[];layer?.clearLayers();if(rangeCircle){rangeCircle.remove();rangeCircle=null}}
 function layoutNationalMarkers(points,width,height){
  const placed=[];
  // Each label uses the closest free callout near its real location.
@@ -84,13 +86,27 @@ function renderNationalMarkers(){
  for(const n of labels){const display=map.containerPointToLatLng([n.x,n.y]),original=map.latLngToContainerPoint(n.p);if(Math.hypot(n.x-original.x,n.y-original.y)>8)L.polyline([n.p,display],{color:'#9aa99e',weight:1,opacity:.7,interactive:false}).addTo(layer);}
  for(const n of labels){const g=map.containerPointToLatLng([n.x,n.y]);addMarker(g,n.pref,n.count,()=>showPref(n.pref),n.size);}
 }
+function groupLocalMarkers(points,width,height){
+ const cols=Math.max(1,Math.floor(width/116)),rows=Math.max(1,Math.floor(height/66)),cw=width/cols,ch=height/rows,buckets=new Map();
+ for(const p of points){if(p.x<0||p.y<0||p.x>width||p.y>height)continue;const col=Math.min(cols-1,Math.floor(p.x/cw)),row=Math.min(rows-1,Math.floor(p.y/ch)),key=col+'|'+row;if(!buckets.has(key))buckets.set(key,{x:(col+.5)*cw,y:(row+.5)*ch,items:[],count:0});const b=buckets.get(key);b.items.push(p);b.count+=p.count;}
+ return [...buckets.values()];
+}
+function renderLocalMarkers(){
+ if(!map||view.kind==='nation')return;layer.clearLayers();const size=map.getSize(),points=localMapPoints.map(p=>({...p,...map.latLngToContainerPoint(p.g)})),groups=groupLocalMarkers(points,size.x,size.y);
+ for(const g of groups){const actual={lat:g.items.reduce((n,p)=>n+p.g.lat,0)/g.items.length,lng:g.items.reduce((n,p)=>n+p.g.lng,0)/g.items.length},display=map.containerPointToLatLng([g.x,g.y]),label=g.items.length===1?g.items[0].city:g.items.length+'市区町村';
+  L.polyline([actual,display],{color:'#8c9c91',weight:1,opacity:.75,interactive:false}).addTo(layer);
+  const html='<div class="local-count-label"><span>'+esc(label)+'</span><b>'+fmt(g.count)+'<small>件</small></b>'+(g.items.length>1?'<em>拡大して地域を見る</em>':'')+'</div>';
+  L.marker(display,{title:label+' '+fmt(g.count)+'件',alt:label+' '+fmt(g.count)+'件',icon:L.divIcon({className:'local-count-marker',html,iconSize:[110,54],iconAnchor:[55,27]})}).on('click',()=>g.items.length>1?map.setView(actual,Math.min(12,map.getZoom()+1.25)):run(()=>showCity(g.items[0].key))).addTo(layer);
+ }
+}
+function fitSelectedRange(){if(map&&rangeCircle)map.fitBounds(rangeCircle.getBounds(),{padding:[24,24],maxZoom:10,animate:false});}
 function showJapanOutline(){
  if(!map)return;if(baseTiles&&map.hasLayer(baseTiles))map.removeLayer(baseTiles);
  if(japanOutline){japanOutline.addTo(map);return;}
  if(!outlineJob)outlineJob=fetch('assets/japan-outline.json').then(r=>{if(!r.ok)throw Error();return r.json()}).then(g=>{japanOutline=L.geoJSON(g,{interactive:false,style:{color:'#819a85',weight:1,fillColor:'#d5e2d2',fillOpacity:1}});if(view.kind==='nation')japanOutline.addTo(map)}).catch(()=>{outlineJob=null;});
 }
 function showLocalTiles(){if(!map)return;if(japanOutline)japanOutline.remove();if(baseTiles&&!map.hasLayer(baseTiles))baseTiles.addTo(map);}
-function drawNation(){clearMap();showJapanOutline();if(map){map.setMinZoom(4);map.fitBounds([[25.5,126.5],[45.5,145.5]],{padding:[28,28],maxZoom:5,animate:false});map.setMinZoom(map.getZoom());}renderNationalMarkers();$("mapHint").textContent="拡大して都道府県を選択";$("cityChoices").replaceChildren()}
+function drawNation(){clearMap();showJapanOutline();if(map){map.invalidateSize({animate:false});map.setMinZoom(4);map.fitBounds([[25.5,126.5],[45.5,145.5]],{padding:[28,28],maxZoom:5,animate:false});map.setMinZoom(map.getZoom());}renderNationalMarkers();$("mapHint").textContent="拡大して都道府県を選択";$("cityChoices").replaceChildren()}
 function refreshPrefCounts(){
  const totals=totalsByPref(),container=$("prefCounts");container.replaceChildren();
  Object.keys(PREF_CENTERS).forEach(pref=>{const b=document.createElement('button');b.type='button';b.innerHTML='<span>'+esc(pref)+'</span><b>'+fmt(totals.get(pref)||0)+'件</b>';b.onclick=()=>run(()=>showPref(pref));container.append(b)});
@@ -103,8 +119,8 @@ function cityButtons(pref,all=false){
 }
 async function drawPref(pref,id){
  let rows;try{rows=await ensureGeo(pref)}catch(e){if(id===generation)report(e);return}if(id!==generation)return;
- clearMap();showLocalTiles();const points=[];let missing=0;totalsByCity(pref).forEach((count,k)=>{const city=k.split('|')[1],g=findGeo(rows,city);if(!g){missing+=count;return}points.push([g.lat,g.lng]);addMarker(g,city,count,()=>showCity(k))});
- if(map){if(points.length)map.fitBounds(points,{padding:[35,35],maxZoom:9});else map.setView(PREF_CENTERS[pref],8)}
+ clearMap();showLocalTiles();const points=[];let missing=0;totalsByCity(pref).forEach((count,k)=>{const city=k.split('|')[1],g=findGeo(rows,city);if(!g){missing+=count;return}points.push([g.lat,g.lng]);localMapPoints.push({g,city,count,key:k})});
+ if(map){map.setMinZoom(4);map.invalidateSize({animate:false});if(points.length)map.fitBounds(points,{padding:[35,35],maxZoom:9});else map.setView(PREF_CENTERS[pref],8);renderLocalMarkers()}
  $("mapHint").textContent=missing?"位置未登録 "+fmt(missing)+"件も一覧に含みます":"市区町村を選択";
 }
 function updateListNav(){
@@ -123,6 +139,7 @@ if(typeof window!=="undefined"){
 function setArea(label,count,copy){window.LeadMapExperience?.areaChanged(label,count);$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。下の案件一覧で、具体的な工事内容を確認できます。";$("stickyListCount").textContent=fmt(count)+"件";updateListNav()}
 function updateURL(){if(IS_DEMO)return;const u=new URL(location.href);["pref","city","r","service","area"].forEach(k=>u.searchParams.delete(k));if(view.pref)u.searchParams.set("pref",view.pref);if(view.city)u.searchParams.set("city",view.city);if(view.kind==="radius")u.searchParams.set("r",view.radius);if(view.kind==="city")u.searchParams.set("area","city");if(service!=="all")u.searchParams.set("service",service);history.replaceState(null,"",u)}
 function beginView(next){
+ $("map").classList?.toggle("local-map",next.kind!=="nation");$("rangeReset").hidden=next.kind!=="radius";
  window.LeadMapActivity?.track("area_search",{area:next.label});generation++;contactCases.clear();pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
  $("searchStatus").textContent="";$("candidates").replaceChildren();$("list").innerHTML='<div class="empty">案件を読み込んでいます…</div>';$("pageStatus").textContent="";$("loadMore").hidden=true;$("list").setAttribute("aria-busy","true");
  $("title").textContent=next.label+"の案件一覧";$("sub").textContent="全"+fmt(pageTotal)+"件・10件ずつ表示";$("prefSelect").value=next.pref||"";$("breadcrumb").textContent=next.label==="全国"?"":"／ "+next.label;setArea(next.label,pageTotal);updateURL();if(typeof syncCaseFilterContext==="function")syncCaseFilterContext();return generation;
@@ -258,7 +275,8 @@ function responseMail(c,type){
   ].join("\n");
   return "mailto:"+CONTACT_EMAIL+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
 }
-function isNewCase(c){const d=new Date(c.effective_at||c.inquired_at||c.received_at);const age=new Date(snapshot||Date.now()).getTime()-d.getTime();return Number.isFinite(age)&&age>=0&&age<=3*86400000}
+function isNewCase(c){const d=new Date(c.effective_at||c.inquired_at||c.received_at);const age=new Date(snapshot||Date.now()).getTime()-d.getTime();return Number.isFinite(age)&&age>=0&&age<7*86400000}
+function isTodayCase(c){const date=new Date(c.effective_at||c.inquired_at||c.received_at),now=new Date(snapshot||Date.now());return Number.isFinite(date.getTime())&&date<=now&&new Date(date.getTime()+9*3600000).toISOString().slice(0,10)===new Date(now.getTime()+9*3600000).toISOString().slice(0,10);}
 function consultLink(c){return /^https:\/\//.test(CALENDAR_URL)?CALENDAR_URL:responseMail(c,"相談")}
 function privateCaseFacts(c){
  const q=chatOf(c),d=c.detail||{};
@@ -271,7 +289,7 @@ function cardHTML(c){
  const address=c.public_preview?c.display_address:c.address,phone=c.masked_phone||'',id='lead-details-'+encodeURIComponent(c.case_id);
  const check=c.needs_status_check||get('工事予定')==='すでに施工済み',action=check?'conditions':'respond',cta=check?'最新の状況を確認する':'この案件に対応したい';
  const symptom=c.public_symptoms||[],other=c.public_other||[];
- const meta='<span class="lead-category">'+serviceLabel(c.service_code)+'</span>'+(isNewCase(c)?'<span class="lead-new">新着</span>':'')+(check?'<span class="lead-review">状況の確認が必要</span>':'');
+ const meta='<span class="lead-category">'+serviceLabel(c.service_code)+'</span>'+(isNewCase(c)?'<span class="lead-new '+(isTodayCase(c)?'lead-today':'')+'">'+(isTodayCase(c)?'本日受付':'新着・7日以内')+'</span>':'')+(check?'<span class="lead-review">状況の確認が必要</span>':'');
  const detailFacts=facts.map(f=>'<div><dt>'+esc(f.label)+'</dt><dd>'+esc(f.value)+'</dd></div>').join('');
  return '<article class="card lead-record '+(c.public_preview?'public-card':'')+'"><div class="lead-overview"><div class="lead-location"><div class="lead-tags">'+meta+'</div><h3>'+esc(c.pref)+' '+esc(c.city)+'</h3><p>'+esc(dateText(c.effective_at||c.inquired_at||c.received_at))+' 受付</p></div><div class="lead-request"><h4>'+esc(work)+'</h4><p class="lead-street">'+esc(address||[c.pref,c.city].join(' '))+'</p><dl class="lead-quick-facts">'+['建物','築年数','工事予定'].map(label=>'<div><dt>'+label+'</dt><dd>'+esc(get(label))+'</dd></div>').join('')+'</dl></div><div class="lead-decision"><button type="button" class="lead-detail-toggle" data-case-toggle="'+esc(c.case_id)+'" aria-expanded="false" aria-controls="'+esc(id)+'">案件の詳細を見る <span aria-hidden="true">＋</span></button><button type="button" class="lead-interest" data-contact-action="'+action+'" data-contact-id="'+esc(c.case_id)+'">'+cta+' <span aria-hidden="true">→</span></button></div></div><section id="'+esc(id)+'" class="lead-record-body" hidden aria-label="'+esc(c.pref+' '+c.city)+'の案件詳細"><div class="lead-detail-heading"><h4>受付時のご相談内容</h4><span>案件ID：'+esc(c.case_id)+'</span></div>'+(check?'<p class="lead-status-note">受付情報に「すでに施工済み」の回答があります。最新の状況を担当者へご確認ください。</p>':'')+'<div class="lead-detail-layout"><div class="lead-contact-data"><dl><dt>所在地</dt><dd>'+esc(address||[c.pref,c.city].join(' '))+'</dd></dl><small>'+(c.public_preview?'番地・建物名は非公開':'閲覧用URLの表示情報')+'</small><dl><dt>電話番号 <span>下4桁非表示</span></dt><dd class="lead-masked-phone">'+esc(phone||'連絡先の掲載なし')+'</dd></dl>'+(!c.public_preview&&c.customer_surname?'<p>'+esc(c.customer_surname)+'様</p>':'')+'</div><div><dl class="lead-detail-facts">'+detailFacts+'</dl>'+(symptom.length?'<div class="lead-symptoms"><h5>気になる症状</h5>'+symptom.map(v=>'<span>'+esc(v)+'</span>').join('')+'</div>':'')+(other.length?'<details class="lead-other"><summary>その他の物件情報（'+other.length+'項目）</summary><dl>'+other.map(f=>'<div><dt>'+esc(f.label)+'</dt><dd>'+esc(f.value)+'</dd></div>').join('')+'</dl></details>':'')+(!c.public_preview?'<details class="lead-other"><summary>受付情報をさらに確認する</summary>'+caseBody(c)+'</details>':'')+'</div></div><div class="lead-detail-next"><div><strong>対応できそうな案件が見つかったら</strong><p>紹介可否・費用・進め方を担当者に確認できます。送信だけで購入は確定しません。</p></div><button type="button" data-contact-action="conditions" data-contact-id="'+esc(c.case_id)+'">この案件の条件を聞く →</button></div></section></article>';
 }
@@ -283,6 +301,7 @@ $('list').addEventListener('click',e=>{
 });
 function nearestBox(center,b){return {lat:Math.max(b[0],Math.min(b[2],center.lat)),lng:Math.max(b[1],Math.min(b[3],center.lng))}}
 async function showRadius(pref,city,radius){
+ if(!SEARCH_RADII.includes(radius))throw new Error("検索範囲を選択してください。");
  const action=++generation;setSearchBusy(true);$("searchStatus").textContent="";
  try{
   const [rows,index]=await Promise.all([ensureGeo(pref),ensureIndex()]);if(action!==generation)return;
@@ -294,9 +313,10 @@ async function showRadius(pref,city,radius){
   for(const [k,count] of totals){const [p,c]=k.split('|'),set=sets.find(a=>a[0]?.pref===p);if(!set)continue;const g=findGeo(set,c);if(g&&hav(center,g)<=radius)selected.set(k,{g,count})}
   const keys=[...selected.keys()],label=pref+' '+city+'から'+radius+'km圏内';
   $("q").value=pref+city;const id=beginView({kind:"radius",label,keys,pref,city,radius});clearMap();showLocalTiles();$("cityChoices").replaceChildren();
-  selected.forEach(({g,count},k)=>addMarker(g,k.split('|')[1],count,()=>showCity(k)));
-  if(map){rangeCircle=L.circle([center.lat,center.lng],{radius:radius*1000,color:'#476e62',weight:1,fillOpacity:.04,interactive:false}).addTo(map);map.fitBounds(rangeCircle.getBounds(),{padding:[28,28],maxZoom:10})}
-  $("mapHint").textContent=selected.size+'市区町村を合計';await loadPage(id);
+  selected.forEach(({g,count},k)=>localMapPoints.push({g,count,key:k,city:k.split('|')[1]}));
+  const choices=$("cityChoices");for(const [k,{count}] of [...selected].sort((a,b)=>b[1].count-a[1].count)){const b=document.createElement('button');b.type='button';b.innerHTML='<span>'+esc(k.split('|')[1])+'</span><b>'+fmt(count)+'件</b>';b.onclick=()=>run(()=>showCity(k));choices.append(b);}
+  if(map){map.setMinZoom(4);map.invalidateSize({animate:false});rangeCircle=L.circle([center.lat,center.lng],{radius:radius*1000,color:'#476e62',weight:1,fillOpacity:.04,interactive:false}).addTo(map);fitSelectedRange();renderLocalMarkers()}
+  $("mapHint").textContent=radius+'km圏内・'+selected.size+'市区町村。地図は指で動かせます';await loadPage(id);
  }finally{if(action<=generation)setSearchBusy(false)}
 }
 function findCandidates(index,query){
@@ -345,6 +365,7 @@ async function bootstrap(){
 $("searchForm").addEventListener('submit',e=>{e.preventDefault();run(search)});
 $("service").onchange=function(){service=this.value;run(rerender)};
 $("radius").onchange=()=>{if(view.kind==='radius')run(rerender)};
+$("rangeReset").onclick=fitSelectedRange;
 $("japan").onclick=()=>{if(snapshot){$("q").value='';run(showJapan)}};
 $("prefSelect").onchange=function(){if(snapshot)run(()=>this.value?showPref(this.value):showJapan())};
 $("loadMore").onclick=()=>run(()=>loadPage());
@@ -354,7 +375,7 @@ Object.keys(PREF_CENTERS).forEach(pref=>{const o=document.createElement('option'
 if(['gaiheki','amamori'].includes(params.get('service'))){service=params.get('service');$("service").value=service}
 const initialPref=params.get('pref'),initialCity=params.get('city');
 if(Object.hasOwn(PREF_CENTERS,initialPref)){
- if(initialCity)view={kind:params.get('area')==='city'?'city':'radius',label:'',keys:[],pref:initialPref,city:norm(initialCity),radius:params.get('r')==='40'?40:20};
+ if(initialCity)view={kind:params.get('area')==='city'?'city':'radius',label:'',keys:[],pref:initialPref,city:norm(initialCity),radius:SEARCH_RADII.includes(Number(params.get('r')))?Number(params.get('r')):20};
  else view={kind:'pref',label:initialPref,keys:[],pref:initialPref};
  $("radius").value=String(view.radius||20);
 }

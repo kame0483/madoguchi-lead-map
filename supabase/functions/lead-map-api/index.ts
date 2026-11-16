@@ -61,7 +61,9 @@ Deno.serve(async(req:Request)=>{
   }
   if(api==="admin_report"){
    const days=Number(body.days??7);if(![1,7,30].includes(days))return out({error:"invalid_days"},400);
-   const {data,error}=await sb.rpc("lead_map_admin_report_v2",{p_days:days});return error?out({error:"report_unavailable"},500):out(data);
+   const {data,error}=await sb.rpc("lead_map_admin_report_v2",{p_days:days});if(error)return out({error:"report_unavailable"},500);
+   if(data?.contacts?.length){const extra=await sb.from('lead_map_contact_requests').select('request_id,case_snapshot').in('request_id',data.contacts.map((r:any)=>r.request_id));if(!extra.error){const notes=new Map((extra.data||[]).map((r:any)=>[r.request_id,r.case_snapshot?.inquiry_note||'']));data.contacts=data.contacts.map((r:any)=>({...r,message:notes.get(r.request_id)||''}));}}
+   return out(data);
   }
   if(api==="admin_import_companies"){
    let rows;try{rows=normalizeCompanies(body)}catch(e){return out({error:String((e as Error).message)},400)}

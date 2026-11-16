@@ -10,14 +10,16 @@ export function normalizeContact(body:Record<string,unknown>){
  const action=txt("action",20,true),caseId=txt("case_id",100)||null,requestId=txt("request_id",36,true);
  if(!["respond","conditions","materials","trial"].includes(action)||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))throw new Error("invalid_contact");
  if(txt("fax_address",100))throw new Error("invalid_contact");
- let date=txt("preferred_date",10)||null;const window=txt("preferred_window",20)||"any";if(window==="now")date=null;
+ let date=txt("preferred_date",10)||null;const window=txt("preferred_window",20)||"any";if(body.form_version===2&&window==="any")throw new Error("time_required");if(window==="now")date=null;
  if(!["any","now","09:00-12:00","12:00-15:00","15:00-18:00",...Array.from({length:12},(_,i)=>String(i+9).padStart(2,"0")+":00-"+String(i+10).padStart(2,"0")+":00")].includes(window))throw new Error("invalid_contact");
  if(date){
   const d=new Date(date+"T00:00:00+09:00"),today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(d.getTime())||new Date(d.getTime()+9*3600000).toISOString().slice(0,10)!==date||date<today||d.getTime()>Date.now()+91*86400000)throw new Error("invalid_contact");
  }
  const area=txt("requested_area",100);
- return {request_id:requestId,action,case_id:caseId,company_name:company,contact_name:name,email,phone,preferred_date:date,preferred_window:window,...(area?{requested_area:area}:{})};
+ const message=typeof body.message==='string'?body.message.replace(/\r\n?/g,'\n').trim():'';
+ if(message.length>1000||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(message))throw new Error('invalid_contact');
+ return {request_id:requestId,action,case_id:caseId,company_name:company,contact_name:name,email,phone,preferred_date:date,preferred_window:window,...(area?{requested_area:area}:{}),...(message?{message}:{}),...(body.form_version===2?{form_version:2}:{})};
 }
 export function contactMail(kind:string,row:any){
  const c=row.case_snapshot||{},label=({respond:"案件対応のご希望",conditions:"条件についてのご相談",materials:"サービス資料のご請求",trial:"無料トライアルについてのご相談"} as Record<string,string>)[row.action]||"お問い合わせ";

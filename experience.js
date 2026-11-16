@@ -38,4 +38,9 @@
    renderCampaign(e.data.campaign,true);if(e.data.scroll)node('campaignBanner').scrollIntoView({behavior:'auto',block:'center'});
   });
  }else loadCampaign();
+ const invite=node('seasonalInvite'),today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);let dismissed=false;
+ try{dismissed=sessionStorage.getItem('lead-map-seasonal-2027')==='closed'}catch{}
+ if(invite&&!IS_DEMO&&!dismissed&&today>='2026-11-16'&&today<='2027-01-31')setTimeout(()=>{if(document.visibilityState==='visible'&&!node('contactDialog').open)invite.hidden=false},45000);
+ node('closeSeasonalInvite')?.addEventListener('click',()=>{invite.hidden=true;try{sessionStorage.setItem('lead-map-seasonal-2027','closed')}catch{}});
+ document.addEventListener('click',e=>{if(e.target.closest?.('#seasonalInvite [data-contact-action]'))invite.hidden=true});
 })();
