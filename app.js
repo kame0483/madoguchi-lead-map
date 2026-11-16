@@ -61,19 +61,19 @@ function addMarker(g,label,count,fn,sizeOverride){if(!map)return;const size=size
 }
 function clearMap(){layer?.clearLayers();if(rangeCircle){rangeCircle.remove();rangeCircle=null}}
 function layoutNationalMarkers(points,width,height){
- const nodes=points.map(p=>({...p,x:p.x,y:p.y}));
- // Label callouts only. Actual prefecture locations and counts never change.
- for(let pass=0;pass<160;pass++){
-  let moved=0;
-  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
-   const a=nodes[i],b=nodes[j],minimum=(a.size+b.size)/2+5;let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
-   if(d>=minimum)continue;if(d<.001){const angle=(i+j+1)*2.39996;dx=Math.cos(angle);dy=Math.sin(angle);d=1;}
-   const shift=(minimum-d)/2+.01;a.x-=dx/d*shift;a.y-=dy/d*shift;b.x+=dx/d*shift;b.y+=dy/d*shift;moved++;
+ const placed=[];
+ // Each label uses the closest free callout near its real location.
+ // Already-placed labels stay put so the country's geographic order remains clear.
+ for(const point of points){
+  const margin=point.size/2+5,originX=Math.max(margin,Math.min(width-margin,point.x)),originY=Math.max(margin,Math.min(height-margin,point.y));let found=null;
+  for(let i=0;i<10000;i++){
+   const radius=3*Math.sqrt(i),angle=i*2.399963229728653,x=originX+Math.cos(angle)*radius,y=originY+Math.sin(angle)*radius;
+   if(x<margin||x>width-margin||y<margin||y>height-margin)continue;
+   if(placed.every(p=>(p.x-x)**2+(p.y-y)**2>=((p.size+point.size)/2+4)**2)){found={...point,x,y};break;}
   }
-  for(const n of nodes){const margin=n.size/2+5;n.x=Math.max(margin,Math.min(width-margin,n.x));n.y=Math.max(margin,Math.min(height-margin,n.y));}
-  if(!moved)break;
+  placed.push(found||{...point,x:originX,y:originY});
  }
- return nodes;
+ return placed;
 }
 function renderNationalMarkers(){
  if(!map)return;layer.clearLayers();const totals=totalsByPref(),dimensions=map.getSize();
