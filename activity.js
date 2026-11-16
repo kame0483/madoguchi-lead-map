@@ -30,7 +30,7 @@
   if(!action&&el.closest('#cityChoices'))action='city';
   if(!action&&(el.closest('#prefCounts')||el.classList.contains('leaflet-marker-icon')))action='prefecture';
   if(!action&&el.matches('.more summary'))action='other_details';
-  const placement=el.closest('#campaignBanner')?'cta:campaign':el.closest('.lead-record-body')?'cta:case_detail':el.closest('.lead-record')?'cta:case_summary':el.closest('.case-inquiry-break')?'cta:list_break':el.closest('#stickyContactNav')?'cta:sticky':el.closest('.service-entry')?'cta:area':el.closest('#serviceContact')?'cta:service':'';
+  const placement=el.closest('#campaignBanner')?'cta:campaign':el.closest('.lead-record-body')?'cta:case_detail':el.closest('.lead-record')?'cta:case_summary':el.closest('.case-inquiry-break')?'cta:list_break':el.closest('#stickyContactNav')?'cta:sticky':el.closest('.service-entry')?'cta:area':el.closest('#serviceContact')?'cta:service':el.closest('.header-nav')?'cta:header':'';
   if(action)track('button_click',{action,case_id:el.dataset.contactId||'',area:typeof view!=='undefined'?view.label:'',...(placement?{field:placement}:{})});
  },true);
 })();

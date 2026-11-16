@@ -2,14 +2,16 @@
 (()=>{
  const node=id=>document.getElementById(id);
  if(!TOKEN)node('publicIntro').hidden=false;
- let scheduled=false;
+ let scheduled=false,firstReady=true,entryTouched=false;
+ const entryAnchor=location.hash||'';
+ window.addEventListener('pointerdown',()=>{entryTouched=true},{once:true,passive:true});
  function syncContactNav(){
   const list=node('casePanel').getBoundingClientRect(),contact=node('serviceContact').getBoundingClientRect();
   const dialog=node('contactDialog');
   node('stickyContactNav').hidden=!snapshot||list.top>window.innerHeight*.6||contact.top<window.innerHeight||dialog.open;
  }
  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;syncContactNav()})}
- window.LeadMapExperience={areaChanged(label,count){node('areaContactTitle').textContent=label==='全国'?'御社のエリアで、紹介を受けられるか確認':label+'の紹介条件を確認';node('stickyContactLabel').textContent=(label==='全国'?'御社のエリア':label)+'・見込案件 '+fmt(count)+'件';schedule();}};
+ window.LeadMapExperience={ready(){if(!firstReady)return;firstReady=false;const id=entryAnchor.slice(1);if(!entryTouched&&['serviceContact','serviceFAQ','casePanel','searchSection','campaignBanner'].includes(id))node(id)?.scrollIntoView({behavior:'auto',block:'start'});},areaChanged(label,count){node('areaContactTitle').textContent=label==='全国'?'御社のエリアで、紹介を受けられるか確認':label+'の紹介条件を確認';node('stickyContactLabel').textContent=(label==='全国'?'御社のエリア':label)+'・見込案件 '+fmt(count)+'件';schedule();}};
  window.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule,{passive:true});
  document.addEventListener('click',()=>setTimeout(schedule,0));
  node('contactDialog').addEventListener('close',schedule);

@@ -8,16 +8,16 @@
 <meta name="description" content="外壁・雨漏りの見込案件を、都道府県・市区町村から確認できます。">
 <title>案件エリアマップ | madoguchi</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=23">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="app.js?v=22"></script>
-<script defer src="activity.js?v=22"></script>
-<script defer src="case-filters.js?v=22"></script>
-<script defer src="contact.js?v=22"></script>
-<script defer src="experience.js?v=22"></script>
+<script defer src="app.js?v=23"></script>
+<script defer src="activity.js?v=23"></script>
+<script defer src="case-filters.js?v=23"></script>
+<script defer src="contact.js?v=23"></script>
+<script defer src="experience.js?v=23"></script>
 </head>
 <body>
-<header><div class="header-inner"><a href="#" class="brand-lockup" aria-label="madoguchi 案件エリアマップ"><span class="brand-company">madoguchi<span class="brand-dot">.</span></span><span class="brand">案件エリアマップ</span></a><nav class="header-nav" aria-label="ページ内メニュー"><a href="#searchSection">エリア検索</a><a href="#casePanel">案件一覧 <span aria-hidden="true">↓</span></a></nav></div></header>
+<header><div class="header-inner"><a href="#" class="brand-lockup" aria-label="madoguchi 案件エリアマップ"><span class="brand-company">madoguchi<span class="brand-dot">.</span></span><span class="brand">案件エリアマップ</span></a><nav class="header-nav" aria-label="ページ内メニュー"><a href="#searchSection">エリア検索</a><a href="#casePanel">案件一覧 <span aria-hidden="true">↓</span></a><button type="button" class="header-materials" data-contact-action="materials">無料資料 <span aria-hidden="true">↓</span></button></nav></div></header>
 <aside id="demoNotice" class="demo-notice" hidden><strong>キャンペーン表示のデモ</strong><span>案件数は実データです。この画面から問い合わせ通知・計測は送信しません。</span><a href="./">通常のサイトを開く →</a></aside>
 <main>
  <section class="hero" aria-label="全国の案件状況">
@@ -63,16 +63,23 @@
   <div class="pagination"><p id="pageStatus" role="status"></p><button id="loadMore" type="button" hidden>さらに10件表示</button></div>
  </section>
  <section class="service-proof" aria-labelledby="serviceProofTitle"><div class="service-proof-heading"><div class="gaiheki-wordmark" aria-label="gaiheki+">gaiheki<span>+</span></div><p class="section-kicker">外壁の新しい集客経路を、御社の営業に。</p><h2 id="serviceProofTitle">見積もりと施工に、<br>もっと時間を使えるように。</h2><p>地域のお客様との接点づくりから、受注につなげるための運用まで。gaiheki+は、施工会社様の集客を支えるサービスです。</p><a href="https://gaihekiplus.com/store/lp" target="_blank" rel="noopener noreferrer">公式サイトでサービス・導入事例を見る ↗</a></div><div class="service-proof-reasons"><div><span>01</span><div><h3>施工価格は、御社の基準で提案。</h3><p>お客様へ直接見積もりを提案できるため、自社の施工内容や価格で営業できます。</p></div></div><div><span>02</span><div><h3>対応できるエリアと件数から相談。</h3><p>対応範囲や稼働状況を伺いながら、ご紹介の進め方をご案内します。</p></div></div><div><span>03</span><div><h3>初回連絡・追客も、専任スタッフと。</h3><p>案件のご紹介後も、初動対応や運用上のお悩みを担当者へご相談いただけます。</p></div></div></div><aside class="service-story"><span>公式サイトに掲載している導入事例</span><div><h3>現場を回しながら、新規のお客様との接点づくりを。</h3><p>トータルハウスメンテナンス優心様の事例では、案件のご紹介に加え、初回の挨拶や追客の進め方を継続して支援しています。</p><a href="https://gaihekiplus.com/store/lp" target="_blank" rel="noopener noreferrer">取り組みの内容を公式サイトで確認する ↗</a></div></aside><p class="service-proof-scope">gaiheki+（外壁）のサービス案内です。雨漏りの紹介条件は担当者から個別にご案内します。</p></section>
- <section id="serviceContact" class="service-contact" aria-labelledby="serviceContactTitle">
-  <div class="service-contact-heading"><p class="section-kicker">加盟・ご利用を検討中の施工会社様へ</p><h2 id="serviceContactTitle">次の現場につながるか、<br>御社のエリアから確かめる。</h2><p>「いくらで紹介を受けられるか」「どんな案件を紹介してもらえるか」。<br class="desktop-break">まずは資料や、御社に合う条件からご確認ください。</p></div>
-  <div class="inquiry-options">
-   <div class="inquiry-option"><span class="inquiry-purpose">まずは内容を知りたい方</span><h3>サービス資料を受け取る</h3><p>紹介の仕組み・料金体系・利用開始までの流れを、まとめて確認できます。</p><button class="inquiry-button filled" type="button" data-contact-action="materials">無料でサービス資料を受け取る <span aria-hidden="true">→</span></button><small>担当者からメールで資料をご案内します。</small></div>
-   <div class="inquiry-option"><span class="inquiry-purpose">利用を具体的に検討したい方</span><h3>無料トライアルについて相談</h3><p>御社の対応エリアで利用できるか、実施条件から個別に確認できます。</p><button class="inquiry-button" type="button" data-contact-action="trial">無料トライアルの条件を聞く <span aria-hidden="true">→</span></button><small>対象・期間・費用の適用範囲は個別にご案内します。</small></div>
+ <section id="serviceFAQ" class="partner-faq" aria-labelledby="partnerFAQTitle"><div><p class="section-kicker">ご検討前の疑問にお答えします</p><h2 id="partnerFAQTitle">よくあるご質問</h2></div><div class="partner-faq-items">
+<details><summary>資料ダウンロードで、何がもらえますか？</summary><p>サービスを検討する際の確認事項と、営業準備シート3点（初回電話・見積後の追客・採算確認）をまとめたPDF4ページです。送信完了画面から、その場で無料ダウンロードできます。個別の最新料金は担当者からご案内します。</p></details>
+<details><summary>無料トライアルは、どこまで無料ですか？</summary><p>このサイトでの案件情報の閲覧と、資料のダウンロードは無料です。トライアルの対象・期間・費用の適用範囲は担当者へご相談ください。フォーム送信だけで、無料の案件紹介や利用開始が確定するものではありません。</p></details>
+<details><summary>掲載されている案件は、すぐ紹介してもらえますか？</summary><p>掲載内容は受付時点の情報です。案件の現在の状況・対応地域・紹介枠などを担当者が確認してご案内します。件数は2025/12/01以降の有効・審査中の案件を重複除外した見込件数で、すべての即時紹介を保証するものではありません。</p></details>
+<details><summary>費用・初期費用・契約期間はどうなりますか？</summary><p>対象サービスやプランで異なります。紹介料・固定費・成約時の手数料・保証金等の開始条件・最低契約期間・更新や停止の条件を、利用前にご確認いただけるよう担当者からご案内します。資料請求・相談だけで費用は発生しません。</p></details>
+<details><summary>営業や見積もりに、自信がなくても相談できますか？</summary><p>ご相談いただけます。gaiheki+では、案件の紹介後の初回連絡や追客、運用上のお悩みも担当者へご相談いただけます。まずは無料の営業準備シートもご活用ください。受注や利益を保証するサービスではありません。</p></details>
+<details><summary>フォーム送信後、どうなりますか？</summary><p>送信完了後に資料をダウンロードできます。担当者が内容を確認し、ご入力の連絡先へご案内します。電話希望は「今すぐ」または9〜21時の1時間単位で任意に指定できます。日時を確定したWeb相談は予約ページからお選びください。</p></details>
+</div></section>
+ <section id="serviceContact" class="service-contact partner-contact" aria-labelledby="serviceContactTitle">
+  <div class="service-contact-heading"><p class="section-kicker">次の集客を、納得して選ぶために。</p><h2 id="serviceContactTitle">御社の売上につながるか。<br><span>まずは、判断できる資料から。</span></h2><p>得意な工事・対応エリア・受けられる件数。<br>御社の状況に合わせて、無理のない始め方をご相談ください。</p></div>
+  <div class="partner-offers">
+   <article class="partner-offer offer-materials"><button type="button" class="offer-banner" data-contact-action="materials"><span class="offer-message"><span class="offer-eyebrow"><b>無料</b> 仕組みと営業の準備がわかる</span><strong>資料ダウンロード</strong><small>検討ガイド＋営業準備シート3点</small></span><span class="kit-art" aria-hidden="true"><span class="kit-page back"></span><span class="kit-page front"><b>gaiheki<span>+</span></b><small>PARTNER GUIDE</small><strong>次の現場に、<br>つながる準備を。</strong><i></i><em>サービス検討ガイド<br>営業準備シート 3点</em></span></span><span class="offer-arrow" aria-hidden="true">↓</span></button><div class="offer-benefits"><h3>その場で受け取れて、社内検討にも使える。</h3><ul><li>紹介条件・費用を確認するチェックリスト</li><li>初回電話と、見積もり提出後の話し方</li><li>自社に利益が残るか考える採算確認シート</li></ul><p>送信完了画面からPDFをダウンロードできます。</p></div></article>
+   <article class="partner-offer offer-trial"><button type="button" class="offer-banner" data-contact-action="trial"><span class="offer-message"><span class="offer-eyebrow">営業準備シート3点も受け取れる</span><strong>無料トライアル相談</strong><small>御社のエリア・条件から確認</small></span><span class="trial-art" aria-hidden="true"><b>gaiheki<span>+</span></b><span>対応エリア</span><i>地域を確認</i><span>工事内容・物件条件</span><i>自社の得意分野と照合</i><em>まずは、合うかを確かめる。</em></span><span class="offer-arrow" aria-hidden="true">→</span></button><div class="offer-benefits"><h3>対応できる案件と、始める条件を具体的に。</h3><ul><li>御社のエリアで紹介を受けられるか相談</li><li>稼働状況に合わせた件数・進め方を確認</li><li>費用・期間を確認したうえで利用を判断</li></ul><p>トライアルの対象・期間・費用の適用範囲は個別にご案内します。</p></div></article>
   </div>
-  <ol class="inquiry-steps" aria-label="ご相談後の流れ"><li><span>01</span><div><strong>地域・案件を選ぶ</strong><p>対応したい案件が未定でも相談できます。</p></div></li><li><span>02</span><div><strong>紹介条件を確認</strong><p>費用や紹介の進め方を担当者がご案内します。</p></div></li><li><span>03</span><div><strong>内容を確認して検討</strong><p>条件を聞いたうえで、ご判断いただけます。</p></div></li></ol>
-  <p class="inquiry-reassurance">このフォームの送信だけで、契約・案件購入が確定することはありません。</p>
-  <div class="service-trust"><div><span>運営会社</span><a href="https://madoguchi.inc/" target="_blank" rel="noopener noreferrer">madoguchi株式会社 ↗</a></div><a href="https://madoguchi.inc/service/gaiheki/" target="_blank" rel="noopener noreferrer">gaiheki+のサービス紹介 ↗</a><button id="generalConsult" class="text-button" type="button" data-contact-action="conditions">案件・紹介条件を相談する →</button></div>
-  <details class="inquiry-faq"><summary>資料請求・ご相談のあと、どうなりますか？</summary><p>お問い合わせ内容を担当者へ通知し、ご入力いただいた連絡先へ資料や条件をご案内します。受付の自動返信メールはお送りしていません。お電話の希望日時も任意でご指定いただけます。</p><p>無料トライアルは、ご利用の対象・実施条件を確認するための相談受付です。このフォームで利用開始や無料の案件紹介が確定するものではありません。</p></details>
+  <p class="partner-no-charge">資料ダウンロード・相談は無料。送信だけで契約・案件購入は確定しません。</p>
+  <ol class="inquiry-steps" aria-label="ご相談後の流れ"><li><span>01</span><div><strong>資料を受け取る</strong><p>その場でPDFを保存できます。</p></div></li><li><span>02</span><div><strong>御社の条件を確認</strong><p>担当者がエリア・費用をご案内。</p></div></li><li><span>03</span><div><strong>内容を見て判断</strong><p>自社に合うか、納得して検討。</p></div></li></ol>
+  <div class="service-trust"><div><span>運営会社</span><a href="https://madoguchi.inc/" target="_blank" rel="noopener noreferrer">madoguchi株式会社 ↗</a></div><a href="https://gaihekiplus.com/store/lp" target="_blank" rel="noopener noreferrer">gaiheki+公式サイト ↗</a><button id="generalConsult" class="text-button" type="button" data-contact-action="conditions">案件・紹介条件を相談する →</button></div>
  </section>
 </main>
 <nav id="stickyContactNav" class="sticky-contact-nav" aria-label="ご相談" hidden><div><span>契約・購入の確定はありません</span><b id="stickyContactLabel">御社のエリアの紹介条件を確認</b></div><button type="button" data-contact-action="conditions">紹介条件を確認 →</button></nav>
@@ -80,7 +87,7 @@
 <footer>顧客の氏名・メール・番地以下は共通URLに掲載していません。紹介の可否・条件は担当者にご確認ください。<span>madoguchi株式会社</span><details class="measurement-note"><summary>利用状況の計測について</summary><p>サービス改善とお問い合わせ対応のため、訪問識別子、表示エリア、ボタン操作、画面を表示して操作している時間を記録します。入力中の氏名・電話・メール、閲覧キー、IPアドレス、画面録画は記録しません。専用URLからのアクセスは送付先会社と閲覧履歴を関連付けます。お問い合わせ送信時には受付内容とも関連付けます。</p></details></footer>
 <dialog id="contactDialog" class="contact-dialog" aria-labelledby="contactHeading">
  <div class="dialog-top"><span>madoguchi / お問い合わせ</span><button id="contactClose" class="dialog-close" type="button" aria-label="閉じる">×</button></div>
- <div class="dialog-body">
+ <div class="dialog-body"><aside id="contactBenefitPanel" class="contact-benefit-panel" hidden><p class="benefit-kicker">無料で受け取れる資料</p><span class="kit-art" aria-hidden="true"><span class="kit-page back"></span><span class="kit-page front"><b>gaiheki<span>+</span></b><small>PARTNER GUIDE</small><strong>次の現場に、<br>つながる準備を。</strong><i></i><em>サービス検討ガイド<br>営業準備シート 3点</em></span></span><h3>次の営業で使える、<br>3つの準備シート。</h3><ul><li><b>01</b><span>初回電話<br><small>現調につなげる確認と話し方</small></span></li><li><b>02</b><span>見積後の追客<br><small>検討の迷いを確かめる質問</small></span></li><li><b>03</b><span>採算確認<br><small>手元に残る額を考える記入欄</small></span></li></ul><p>サービス検討ガイドを含むPDF4ページ。送信完了後、その場で保存できます。</p><p class="benefit-trial-note">無料トライアルは個別の相談受付です。無料の案件紹介や受注を保証するものではありません。</p></aside><div class="contact-form-column">
   <div id="contactIntro"><p id="contactIntent" class="section-kicker">案件についてのご相談</p><h2 id="contactHeading">ありがとうございます！</h2><p class="dialog-intro">このあと弊社の担当者からお電話いたします。<br>御社の電話番号と、ご都合のよい日時をお知らせください。</p><a class="booking-inline" href="https://calendar.app.google/mRRBUfa9pHoPJVxeA" target="_blank" rel="noopener noreferrer">Web打ち合わせの日時を予約する ↗</a></div>
   <p id="contactCase" class="contact-context"></p>
   <p id="contactLoading" class="form-status" role="status">受付状況を確認しています…</p>
@@ -91,13 +98,14 @@
    <div class="form-field"><label for="contactPhone">御社のお電話番号 <span>必須</span></label><input id="contactPhone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="30" placeholder="例：090-1234-5678" required></div>
    <div class="form-field"><label for="contactEmail">メールアドレス <span>必須</span></label><input id="contactEmail" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="例：info@example.co.jp" required></div>
    <details class="callback-disclosure"><summary>電話の希望日時を指定する <span>任意</span></summary><fieldset class="callback-fields"><legend>電話に出られる日時 <small>日本時間・任意</small></legend><div class="form-field callback-date"><label for="contactDate">希望日</label><input id="contactDate" name="preferred_date" type="date"></div><fieldset class="callback-times"><legend>希望時間帯 <small>9:00〜21:00・1時間ごと</small></legend><label class="time-choice time-now"><input type="radio" name="callback_time" value="now"><span>今すぐの連絡を希望</span></label><label class="time-choice time-any"><input type="radio" name="callback_time" value="any" checked><span>時間帯の指定なし</span></label><div class="time-grid"><label class="time-choice"><input type="radio" name="callback_time" value="09:00-10:00"><span>9:00–10:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="10:00-11:00"><span>10:00–11:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="11:00-12:00"><span>11:00–12:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="12:00-13:00"><span>12:00–13:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="13:00-14:00"><span>13:00–14:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="14:00-15:00"><span>14:00–15:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="15:00-16:00"><span>15:00–16:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="16:00-17:00"><span>16:00–17:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="17:00-18:00"><span>17:00–18:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="18:00-19:00"><span>18:00–19:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="19:00-20:00"><span>19:00–20:00</span></label><label class="time-choice"><input type="radio" name="callback_time" value="20:00-21:00"><span>20:00–21:00</span></label></div></fieldset><p class="field-help">「今すぐ」は早めのお電話をご希望の場合にお選びください。担当者の状況により順次ご連絡します。折り返し電話の希望日時であり、確定予約ではありません。未指定の場合は、担当者から順次ご連絡します。</p></fieldset></details>
-   <p class="field-help">ご入力内容はFormSubmitを経由して当社へ通知し、本件のご案内と日程調整に使用します。送信だけで契約や案件購入は確定しません。</p>
+   <p class="field-help">ご入力内容はFormSubmitを経由して当社へ通知し、資料・サービスのご案内と日程調整に使用します。<a href="https://madoguchi.inc/privacy-policy/" target="_blank" rel="noopener noreferrer">個人情報の取り扱い ↗</a></p>
    <p id="contactError" class="form-error" role="alert" tabindex="-1" hidden></p>
    <button id="contactSubmit" class="primary" type="submit">この内容で電話連絡を依頼する</button>
   </form>
   <section id="contactSuccess" class="contact-success" aria-live="polite" hidden><h3 id="contactSuccessHeading">ご依頼を受け付けました</h3><p id="contactSuccessCopy">ご入力いただいた電話番号へ、弊社の担当者からご連絡いたします。</p><p id="contactReceiptNote"></p><dl><dt>受付番号</dt><dd id="contactRequestNumber"></dd><dt>お電話番号</dt><dd id="contactSavedPhone"></dd><dt>電話可能な日時</dt><dd id="contactSavedTime"></dd></dl><button id="contactRetryMail" type="button" hidden>通知を再確認する</button></section>
+<section id="contactResources" class="resource-delivery" hidden aria-labelledby="contactResourcesTitle"><p class="section-kicker">御社の検討と営業に、お役立てください</p><h3 id="contactResourcesTitle">資料をご用意しました。</h3><p>サービス検討ガイド＋営業準備シート3点 / PDF・4ページ</p><a class="kit-download" href="assets/downloads/gaiheki-sales-kit.pdf" download="gaiheki-sales-kit.pdf">資料をまとめてダウンロード <span aria-hidden="true">↓</span></a><details><summary>1点ずつダウンロードする</summary><ul><li><a href="assets/downloads/service-guide.pdf" download>サービス検討ガイド</a></li><li><a href="assets/downloads/first-call.pdf" download>初回電話の準備シート</a></li><li><a href="assets/downloads/follow-up.pdf" download>見積後の追客シート</a></li><li><a href="assets/downloads/profit-check.pdf" download>採算確認シート</a></li></ul></details><small>最新の個別料金表ではありません。費用・契約条件は担当者の案内と申込書でご確認ください。</small></section>
   <section class="booking-section"><p class="section-kicker">オンラインでのご相談</p><h3>資料を見ながら、詳しくお話ししたい方へ。</h3><p>Web打ち合わせや、お時間を指定してのご相談をご希望の方は、こちらからご都合のよい日時をご予約ください。</p><a id="contactBooking" class="booking-link" href="https://calendar.app.google/mRRBUfa9pHoPJVxeA" target="_blank" rel="noopener noreferrer">予約ページで日時を選ぶ <span aria-hidden="true">↗</span></a><p class="booking-note">Googleカレンダーの予約ページが開きます。</p></section>
- </div>
+ </div></div>
 </dialog>
 <noscript><p class="empty">この画面を利用するにはJavaScriptを有効にしてください。</p></noscript>
 </body>

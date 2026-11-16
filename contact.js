@@ -6,8 +6,8 @@ function contactIsDemo(){return typeof IS_DEMO!=="undefined"&&IS_DEMO;}
 const contactIntents={
  respond:{label:"この案件への対応希望",heading:"ありがとうございます！",intro:"弊社の担当者からお電話いたします。御社の連絡先と、ご都合のよい日時をお知らせください。",submit:"この案件の対応について連絡を依頼する",success:"ご希望を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、案件の紹介可否や条件をご案内します。"},
  conditions:{label:"案件・紹介条件のご相談",heading:"気になることから、ご相談ください。",intro:"紹介条件や対応エリアについて、担当者が個別にご案内します。御社の連絡先をお知らせください。",submit:"条件について相談する",success:"ご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、ご希望のエリアや紹介条件をお伺いします。"},
- materials:{label:"サービス資料のご請求",heading:"まずは資料で、ご確認ください。",intro:"案件紹介の仕組みや料金体系をご検討いただくための資料を、担当者からメールでご案内します。",submit:"サービス資料を請求する",success:"資料請求を受け付けました",next:"担当者から、ご入力のメールアドレスへ資料をご案内します。内容の確認のため、お電話する場合があります。"},
- trial:{label:"無料トライアルのご相談",heading:"御社で試せるか、ご相談ください。",intro:"御社のエリアやご希望を伺い、トライアルの対象・期間・費用の適用範囲をご案内します。送信だけで利用開始は確定しません。",submit:"無料トライアルについて相談する",success:"トライアルのご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、対象エリアや実施条件をご案内します。"}
+ materials:{label:"サービス資料のご請求",heading:"資料ダウンロード",intro:"サービス検討ガイドと営業準備シート3点を、送信完了後にその場でダウンロードできます。",submit:"送信して、無料の資料を受け取る",success:"資料請求を受け付けました",next:"担当者から、ご入力のメールアドレスへ資料をご案内します。内容の確認のため、お電話する場合があります。"},
+ trial:{label:"無料トライアルのご相談",heading:"無料トライアル相談",intro:"御社の対応エリアや稼働状況に合うか、担当者がご案内します。営業準備シート3点も、送信完了後に無料で受け取れます。",submit:"無料トライアルを相談して、資料を受け取る",success:"トライアルのご相談を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、対象エリアや実施条件をご案内します。"}
 };
 const CONTACT_FORM_ENDPOINT="https://formsubmit.co/ajax/t.kamei@madoguchi.inc";
 function contactNotification(data){
@@ -41,6 +41,10 @@ async function openContactDialog(action,caseId,opener){
  const version=++contactOpenVersion;contactAction=Object.hasOwn(contactIntents,action)?action:"conditions";contactCaseId=caseId||null;contactOpener=opener;contactSubmissionId=null;contactSubmissionBody=null;
  const c=contactCaseId?contactCases.get(contactCaseId):null;contactRequestedArea=typeof view!=="undefined"&&view.label!=="全国"?view.label:"";
  const intent=contactIntents[contactAction];
+ const withKit=['materials','trial'].includes(contactAction);
+ contactDialog.setAttribute('data-intent',contactAction);
+ contactEl('contactBenefitPanel').hidden=!withKit;contactEl('contactResources').hidden=true;
+
  contactEl("contactIntent").textContent=intent.label;
  contactEl("contactHeading").textContent=intent.heading;
  contactEl("contactIntro").querySelector(".dialog-intro").textContent=intent.intro;
@@ -69,6 +73,7 @@ function contactDemoResult(payload){
  contactEl('contactReceiptNote').textContent='メール・Google Chatへの通知、入力内容の保存、予約は行っていません。';
  contactEl('contactRequestNumber').textContent='DEMO（保存なし）';contactEl('contactSavedPhone').textContent=payload.phone;
  contactEl('contactSavedTime').textContent=payload.preferred_window==='now'?'今すぐの連絡を希望':(payload.preferred_date||'日付指定なし')+' ／ '+(payload.preferred_window==='any'?'時間指定なし':payload.preferred_window);
+ contactEl('contactResources').hidden=!['materials','trial'].includes(contactAction);
  contactEl('contactSuccess').scrollIntoView({block:'start',behavior:'auto'});
 }
 function contactShowResult(result,payload){

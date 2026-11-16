@@ -336,7 +336,7 @@ async function bootstrap(){
   $("prospectTotal").textContent=fmt(total);$("todayCount").textContent=fmt(data.metrics.today);$("last7Count").textContent=fmt(data.metrics.last7);
   for(const [id,s] of [['outer','gaiheki'],['rain','amamori']])$(id).textContent=fmt(summaries.filter(x=>x.service_code===s).reduce((n,x)=>n+Number(x.case_count),0));
   $("updatedAt").textContent=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot))+' 更新';
-  await rerender();
+  await rerender();window.LeadMapExperience?.ready?.();
  }catch(e){
   report(e);$("updatedAt").textContent=snapshot?'更新できませんでした（前回取得分を表示）':'取得できませんでした';
   if(!snapshot){$("list").innerHTML='<div class="empty">'+esc(e.message)+'</div>';$("list").setAttribute('aria-busy','false');$("sub").textContent='通信状況を確認し、もう一度更新してください'}
