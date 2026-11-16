@@ -47,11 +47,15 @@ export async function registerConversion(req:Request,b:any,sb:any,accessHash:str
  return {status:200,body:{ok:true,request_id,chat_status:state||row.chat_state,email_acknowledged:!!row.email_ack_at}};
 }
 
+export function normalizeCompanyRef(value:string){
+ const ref=value.normalize('NFKC').trim(),digits=ref.replace(/[\s()-]/g,'').replace(/^\+81/,'0');
+ return /^[+\d\s()-]+$/.test(ref)&&/^0[1-9][0-9]{8,9}$/.test(digits)?digits:ref;
+}
 export function normalizeCompanies(b:any){
  if(!Array.isArray(b.rows)||!b.rows.length||b.rows.length>500)throw Error('invalid_companies');
  return b.rows.map((r:any,i:number)=>{
-  const name=typeof r?.company_name==='string'?r.company_name.trim():'',email=typeof r?.recipient_email==='string'?r.recipient_email.trim().toLowerCase():'';
-  if(!name||name.length>120||/[\u0000-\u001f]/.test(name)||email.length>254||!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}$/.test(email))throw Error('invalid_row_'+(i+1));
-  return {company_name:name,recipient_email:email};
+  const name=typeof r?.company_name==='string'?r.company_name.trim():'',email=typeof r?.recipient_email==='string'?r.recipient_email.trim().toLowerCase():'',ref=typeof r?.external_ref==='string'?normalizeCompanyRef(r.external_ref):'';
+  if(!name||name.length>120||/[\u0000-\u001f]/.test(name)||email.length>254||(email&&!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}$/.test(email))||ref.length>120||/[\u0000-\u001f]/.test(ref)||(!email&&!ref))throw Error('invalid_row_'+(i+1));
+  return {company_name:name,recipient_email:email,external_ref:ref};
  });
 }

@@ -28,3 +28,6 @@ console.log('Activity: strict event whitelist, separate admin access, durable co
 
 c.companyInput={rows:[{company_name:'  確認用会社  ',recipient_email:'Sales@Example.invalid'}]};const companyRows=vm.runInContext('normalizeCompanies(companyInput)',c);assert.equal(companyRows[0].company_name,'確認用会社');assert.equal(companyRows[0].recipient_email,'sales@example.invalid');
 for(const rows of [[],[{company_name:'会社',recipient_email:'bad'}],[{company_name:'会社\n追加',recipient_email:'qa@example.invalid'}],Array(501).fill({company_name:'会社',recipient_email:'qa@example.invalid'})]){c.companyInput={rows};assert.throws(()=>vm.runInContext('normalizeCompanies(companyInput)',c));}
+
+c.companyInput={rows:[{company_name:'メールなしの会社',recipient_email:'',external_ref:'MF-0001'},{company_name:'メールなしの会社',external_ref:'+81 (90) 0000-0000'}]};const noEmail=vm.runInContext('normalizeCompanies(companyInput)',c);assert.equal(noEmail[0].recipient_email,'');assert.equal(noEmail[0].external_ref,'MF-0001');assert.equal(noEmail[1].external_ref,'09000000000');
+for(const rows of [[{company_name:'会社'}],[{company_name:'会社',external_ref:'id\nsecret'}],[{company_name:'会社',recipient_email:'bad',external_ref:'valid-id'}]]){c.companyInput={rows};assert.throws(()=>vm.runInContext('normalizeCompanies(companyInput)',c));}
