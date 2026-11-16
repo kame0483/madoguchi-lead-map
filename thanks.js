@@ -16,5 +16,5 @@ if(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test
  document.getElementById("thanksTime").textContent=time;
  document.getElementById("thanksSummary").hidden=false;
  document.getElementById("thanksResources").hidden=true;
- document.getElementById("thanksBack").addEventListener("click",e=>{if(history.length>1){e.preventDefault();history.back()}});
+ // Return directly to the map; browser back would revisit the external POST.
 }
