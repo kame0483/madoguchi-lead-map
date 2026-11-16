@@ -5,9 +5,10 @@ import {stripTypeScriptTypes} from 'node:module';
 import {webcrypto,createHash} from 'node:crypto';
 const hash=createHash('sha256').update('qa-token').digest('hex');
 let source=readFileSync(new URL('../supabase/functions/lead-map-api/index.ts',import.meta.url),'utf8').replace(/^import .*;$/gm,'');
+source=readFileSync(new URL('../supabase/functions/lead-map-api/sharing.ts',import.meta.url),'utf8').replace(/^export /gm,'')+'\n'+source;
 source='const ACCESS_HASH="'+hash+'";const ADMIN_HASH="'+createHash('sha256').update('qa-admin').digest('hex')+'";\n'+source;
-let handler,invocations=[];
-const context={crypto:webcrypto,TextEncoder,Response,Request,URL,console,Date,createClient:()=>({rpc:async(name,args)=>{invocations.push({name,args});return {data:name==='lead_map_bootstrap_v2'?{rows:[],metrics:{total:0,today:0,last7:0},snapshot:args.p_as_of}:{total:0,cases:[],snapshot:args.p_as_of},error:null}}}),Deno:{env:{get:n=>n==='SUPABASE_SECRET_KEYS'?'{"default":"qa-server-secret"}':n==='SUPABASE_URL'?'https://example.invalid':undefined},serve:fn=>handler=fn}};
+let handler,invocations=[],caseRows=[];
+const context={crypto:webcrypto,TextEncoder,Response,Request,URL,console,Date,createClient:()=>({rpc:async(name,args)=>{invocations.push({name,args});return {data:name==='lead_map_bootstrap_v2'?{rows:[],metrics:{total:0,today:0,last7:0},snapshot:args.p_as_of}:{total:0,cases:caseRows,snapshot:args.p_as_of},error:null}}}),Deno:{env:{get:n=>n==='SUPABASE_SECRET_KEYS'?'{"default":"qa-server-secret"}':n==='SUPABASE_URL'?'https://example.invalid':undefined},serve:fn=>handler=fn}};
 vm.runInNewContext(stripTypeScriptTypes(source),context);
 const request=(body,key='qa-token')=>new Request('https://example.invalid/lead-map-api',{method:'POST',headers:{'x-lead-map-key':key,'content-type':'application/json'},body:JSON.stringify(body)});
 assert.equal((await handler(request({api:'bootstrap'},'invalid'))).status,403);
@@ -30,4 +31,12 @@ console.log('API: auth, legacy URL, CORS, zero keys, 250 areas and invalid reque
 
 assert.equal((await handler(request({api:'admin_report'}))).status,403,'viewer cannot read analytics');
 assert.equal((await handler(new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json','x-lead-map-admin':'qa-admin'},body:JSON.stringify({api:'admin_report',days:7})}))).status,200);assert.equal(invocations.at(-1).name,'lead_map_admin_report_v2');
-assert.equal((await handler(new Request('https://example.invalid',{method:'GET',headers:{'x-lead-map-admin':'qa-admin'}}))).status,403,'admin key does not grant case API access');
+const adminOnlyHeader=await handler(new Request('https://example.invalid?api=cases',{method:'GET',headers:{'x-lead-map-admin':'qa-admin'}}));assert.equal(adminOnlyHeader.status,200);assert.equal((await adminOnlyHeader.json()).visibility,'public','admin header alone grants only the same redacted public preview');
+caseRows=[{case_id:'test-id',service_code:'gaiheki',pref:'岡山県',city:'岡山市北区',effective_at:'2026-11-16T00:00:00Z',customer_surname:'NEVER-EXPOSE-NAME',masked_phone:'NEVER-EXPOSE-PHONE',phone:'09099999999',email:'NEVER-EXPOSE@private.invalid',address:'NEVER-EXPOSE-ADDRESS',postal_code:'9999999',detail:{chat_item:{'物件の種類は？':'一戸建て','その他':'NEVER-EXPOSE-FREE-TEXT'}}}];
+const publicCases=await handler(request({api:'cases'},''));assert.equal(publicCases.status,200);const preview=await publicCases.json();assert.equal(preview.cases[0].public_preview,true);assert.equal(preview.cases[0].public_facts[0].value,'一戸建て');assert.ok(!JSON.stringify(preview).includes('NEVER-EXPOSE'));assert.ok(!JSON.stringify(preview).includes('09099999999'));
+const privateCases=await handler(request({api:'cases'}));assert.equal((await privateCases.json()).cases[0].address,'NEVER-EXPOSE-ADDRESS');
+for(const api of ['admin_crm_search','admin_crm_link','admin_save_campaign','admin_site_config']){assert.equal((await handler(request({api},''))).status,403);assert.equal((await handler(request({api}))).status,403);}
+assert.equal((await handler(request({api:'cases',filters:{'q:住所':'x'}},''))).status,400);
+const publicFilter=await handler(request({api:'case_filters'},''));assert.deepEqual(Object.keys((await publicFilter.json()).fields),['service_code']);
+assert.equal((await handler(request({api:'bootstrap'},''))).status,200);
+console.log('Public entry: server-side PII whitelist, protected original detail/CRM/settings, consistent public counts and safe filters passed');

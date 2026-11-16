@@ -31,3 +31,7 @@ for(const rows of [[],[{company_name:'会社',recipient_email:'bad'}],[{company_
 
 c.companyInput={rows:[{company_name:'メールなしの会社',recipient_email:'',external_ref:'MF-0001'},{company_name:'メールなしの会社',external_ref:'+81 (90) 0000-0000'}]};const noEmail=vm.runInContext('normalizeCompanies(companyInput)',c);assert.equal(noEmail[0].recipient_email,'');assert.equal(noEmail[0].external_ref,'MF-0001');assert.equal(noEmail[1].external_ref,'09000000000');
 for(const rows of [[{company_name:'会社'}],[{company_name:'会社',external_ref:'id\nsecret'}],[{company_name:'会社',recipient_email:'bad',external_ref:'valid-id'}]]){c.companyInput={rows};assert.throws(()=>vm.runInContext('normalizeCompanies(companyInput)',c));}
+
+c.input={...c.input,request_id:'32345678-1234-4123-8123-123456789abc',case_id:null,requested_area:'岡山県'};
+const areaResult=await vm.runInContext('registerConversion(request,input,sb,"qa-hash",hash,"https://chat.example.invalid")',c);assert.equal(areaResult.status,200);assert.equal(records.get(c.input.request_id).case_snapshot.requested_area,'岡山県');assert.ok(sent.at(-1).body.text.includes('岡山県'));assert.ok(!sent.at(-1).body.text.includes('original-customer-address'));
+console.log('Area-only inquiries: selected area is saved before Chat and original-customer data is excluded');

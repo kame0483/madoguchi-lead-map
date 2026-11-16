@@ -25,7 +25,7 @@ function parseCompanyList(source){
 }
 function buildCompanyURL(base,code){
  let u;try{u=new URL(base)}catch{throw Error('現在お使いの、案件が表示できる閲覧URLを入力してください。');}
- if(u.protocol!=='https:'||u.host!=='kame0483.github.io'||!/^\/madoguchi-lead-map\/(index\.html)?$/.test(u.pathname)||u.username||u.password||!u.searchParams.get('k')||!/^[0-9a-f]{32}$/.test(code))throw Error('閲覧キー付きの案件エリアマップURLを入力してください。管理画面のURLは使用できません。');
+ if(u.protocol!=='https:'||u.host!=='kame0483.github.io'||!/^\/madoguchi-lead-map\/(index\.html)?$/.test(u.pathname)||u.username||u.password||!/^[0-9a-f]{32}$/.test(code))throw Error('案件エリアマップのURLを入力してください。管理画面のURLは使用できません。');
  const allowed=['k','pref','city','r','service','area'];for(const k of [...u.searchParams.keys()])if(!allowed.includes(k))u.searchParams.delete(k);
  u.hash='';u.searchParams.set('company',code);return u.href;
 }
@@ -52,6 +52,11 @@ function baseURLState(){
  try{requireBaseURL();node.textContent='閲覧URLを確認しました';node.className='status-ok';return true;}
  catch(e){node.textContent=e.message;node.className='status-warn';return false;}
 }
+function companyURL(row){
+ const u=new URL(buildCompanyURL(el('companyBaseURL').value.trim(),row.code));
+ if(row.crm_company_id&&row.prefecture&&/^(北海道|東京都|京都府|大阪府|.{2,3}県)$/.test(row.prefecture)){for(const k of ['city','r','area'])u.searchParams.delete(k);u.searchParams.set('pref',row.prefecture);}
+ return u.href;
+}
 function renderGeneratedCompanies(){
  const base=el('companyBaseURL').value.trim();let valid=false;try{requireBaseURL();valid=true;}catch{}
  el('downloadCompanyLinks').disabled=!generatedCompanies.length||!valid||issuerBusy;
@@ -59,8 +64,8 @@ function renderGeneratedCompanies(){
  const result=companyResultPage(generatedCompanies,el('companyResultSearch').value,issuedPage);issuedPage=result.page;
  el('issuedSummary').textContent=el('companyResultSearch').value.trim()?'検索結果 '+result.total.toLocaleString('ja-JP')+'社 ／ 全'+generatedCompanies.length.toLocaleString('ja-JP')+'社':'発行済み '+generatedCompanies.length.toLocaleString('ja-JP')+'社';
  el('companyLinksPreview').innerHTML=result.rows.map(({row:r,index})=>{
-  const url=valid?buildCompanyURL(base,r.code):'上の閲覧URLを入力すると、共有用URLを表示できます。';
-  const details=[r.recipient_email,r.external_ref].filter(Boolean).join(' ／ ');
+  const url=valid?companyURL(r):'上の閲覧URLを入力すると、共有用URLを表示できます。';
+  const details=[r.recipient_email,r.external_ref,r.crm_company_id?r.prefecture:''].filter(Boolean).join(' ／ ');
   return '<article class="issued-company"><div class="issued-company-heading"><div><h4>'+esc(r.company_name)+'</h4><p>'+esc(details)+'</p></div><button type="button" data-copy-company="'+index+'"'+(!valid?' disabled':'')+'>URLをコピー</button></div><code>'+esc(url)+'</code></article>';
  }).join('')||'<p class="issuer-no-results">一致する会社がありません。会社名や電話番号を変えて検索してください。</p>';
  el('issuedPrevious').disabled=!issuedPage;el('issuedNext').disabled=issuedPage>=result.last;
@@ -78,7 +83,7 @@ function issuerLoading(busy){
 }
 function receiveCompanies(rows){generatedCompanies=rows;issuedPage=0;el('companyResultSearch').value='';renderGeneratedCompanies();}
 function selectIssuerMode(mode){
- for(const [id,value] of [['issuerSingle','single'],['issuerBulk','bulk'],['issuerRegistered','registered']])el(id).hidden=mode!==value;
+ for(const [id,value] of [['issuerSingle','single'],['issuerBulk','bulk'],['issuerRegistered','registered'],['issuerCRM','crm']])el(id).hidden=mode!==value;
  document.querySelectorAll('[data-issuer-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.issuerMode===mode)));
  el('companyLinkStatus').textContent='';
 }
@@ -107,7 +112,7 @@ el('singleCompanyForm').addEventListener('submit',async e=>{
  try{requireBaseURL();}catch(e){el('baseURLStatus').textContent=e.message;el('baseURLStatus').className='status-warn';issuerStatus(e.message,true,'singleCompanyStatus');el('companyBaseURL').focus();return;}
  let row;try{row=singleCompanyEntry(el('singleCompanyName').value,el('singleCompanyType').value,el('singleCompanyContact').value);}catch(e){issuerStatus(e.message,true,'singleCompanyStatus');return;}
  issuerLoading(true);issuerStatus('専用URLを発行しています…',false,'singleCompanyStatus');
- try{const r=await api({api:'admin_import_companies',rows:[row]});receiveCompanies(r.rows);issuerStatus(row.company_name+'のURLを発行しました。下の「URLをコピー」から共有してください。',false,'singleCompanyStatus');el('companyResults').scrollIntoView({behavior:'smooth',block:'start'});}
+ try{const r=await api({api:'admin_import_companies',rows:[row]});receiveCompanies(r.rows);issuerStatus(row.company_name+'のURLを発行しました。下の「URLをコピー」から共有してください。',false,'singleCompanyStatus');el('companyResults').scrollIntoView({behavior:'auto',block:'start'});}
  catch(e){issuerStatus(e.message||'URLを発行できませんでした。再度お試しください。',true,'singleCompanyStatus');}finally{issuerLoading(false);}
 });
 el('companyFile').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{if(f.size>10000000)throw Error('CSVは10MB以下にしてください。');el('companyRows').value=await f.text();el('companyFileName').textContent=f.name;issuerStatus('ファイルを読み込みました。内容を確認して「一覧からURLを発行する」を押してください。');}catch(e){issuerStatus(e.message,true);}});
@@ -126,7 +131,7 @@ el('companyLinkForm').addEventListener('submit',async e=>{
  issuerLoading(true);const issued=[];
  try{
   for(let offset=0;offset<rows.length;offset+=200){issuerStatus('専用URLを発行中… '+offset.toLocaleString('ja-JP')+' / '+rows.length.toLocaleString('ja-JP')+'社');const r=await api({api:'admin_import_companies',rows:rows.slice(offset,offset+200)});issued.push(...r.rows);}
-  receiveCompanies(issued);issuerStatus(issued.length.toLocaleString('ja-JP')+'社のURLを発行しました。1社ずつコピーするか、全件をCSVに出力できます。');el('companyResults').scrollIntoView({behavior:'smooth',block:'start'});
+  receiveCompanies(issued);issuerStatus(issued.length.toLocaleString('ja-JP')+'社のURLを発行しました。1社ずつコピーするか、全件をCSVに出力できます。');el('companyResults').scrollIntoView({behavior:'auto',block:'start'});
  }catch(e){if(issued.length)receiveCompanies(issued);issuerStatus(e.message+(issued.length?' 途中までの登録は保存されています。同じ一覧で再実行しても重複登録されません。':''),true);}finally{issuerLoading(false);}
 });
 el('downloadCompanyLinks').addEventListener('click',()=>{
@@ -136,14 +141,14 @@ el('downloadCompanyLinks').addEventListener('click',()=>{
   if(generatedCompanies.some(r=>/^[=+@-]/.test(r.recipient_email)))throw Error('記号から始まるメールアドレスが含まれています。アドレスを変更せず安全に出力するため、元のシートへURL列だけ転記してください。');
   const cell=v=>'"'+String(/^[\s]*[=+@-]/.test(String(v))?"'"+v:v).replace(/"/g,'""')+'"';
   const withRef=generatedCompanies.some(r=>r.external_ref);
-  const rows=[['会社名','メールアドレス','案件エリアマップURL',...(withRef?['会社ID・電話番号']:[])],...generatedCompanies.map(r=>[r.company_name,r.recipient_email,buildCompanyURL(base,r.code),...(withRef?[r.external_ref||'']:[])])];
+  const rows=[['会社名','メールアドレス','案件エリアマップURL',...(withRef?['会社ID・電話番号']:[])],...generatedCompanies.map(r=>[r.company_name,r.recipient_email,companyURL(r),...(withRef?[r.external_ref||'']:[])])];
   const blob=new Blob(['\uFEFF'+rows.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='company-map-links.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   issuerStatus(generatedCompanies.length.toLocaleString('ja-JP')+'社すべてのCSVを作成しました。検索結果にかかわらず全件が含まれます。メール送信はこの画面では行いません。');
  }catch(e){issuerStatus(e.message,true);}
 });
 el('companyLinksPreview').addEventListener('click',async e=>{
  const button=e.target.closest('[data-copy-company]');if(!button)return;
- try{const row=generatedCompanies[Number(button.dataset.copyCompany)];if(!row)throw Error('会社を確認してください。');await navigator.clipboard.writeText(buildCompanyURL(el('companyBaseURL').value.trim(),row.code));button.textContent='コピーしました';issuerStatus(row.company_name+'のURLをコピーしました。この会社へ共有してください。');setTimeout(()=>{button.textContent='URLをコピー';},2500);}
+ try{const row=generatedCompanies[Number(button.dataset.copyCompany)];if(!row)throw Error('会社を確認してください。');await navigator.clipboard.writeText(companyURL(row));button.textContent='コピーしました';issuerStatus(row.company_name+'のURLをコピーしました。この会社へ共有してください。');setTimeout(()=>{button.textContent='URLをコピー';},2500);}
  catch(e){issuerStatus(e.message||'コピーできませんでした。表示されたURLを選択してコピーしてください。',true);}
 });
-document.querySelector('.issuer-help-link').addEventListener('click',e=>{e.preventDefault();el('issuerHelp').open=true;el('issuerHelp').scrollIntoView({behavior:'smooth',block:'start'});});
+document.querySelector('.issuer-help-link').addEventListener('click',e=>{e.preventDefault();el('issuerHelp').open=true;el('issuerHelp').scrollIntoView({behavior:'auto',block:'start'});});

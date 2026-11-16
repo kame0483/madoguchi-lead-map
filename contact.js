@@ -1,6 +1,6 @@
 "use strict";
 const contactDialog=document.getElementById("contactDialog");
-let contactAction="conditions",contactCaseId=null,contactOpener=null,contactOpenVersion=0,contactSubmitting=false,contactSubmissionId=null,contactSubmissionBody=null;
+let contactRequestedArea="",contactAction="conditions",contactCaseId=null,contactOpener=null,contactOpenVersion=0,contactSubmitting=false,contactSubmissionId=null,contactSubmissionBody=null;
 const contactEl=id=>document.getElementById(id);
 const contactIntents={
  respond:{label:"この案件への対応希望",heading:"ありがとうございます！",intro:"弊社の担当者からお電話いたします。御社の連絡先と、ご都合のよい日時をお知らせください。",submit:"この案件の対応について連絡を依頼する",success:"ご希望を受け付けました",next:"担当者からご入力のお電話番号へご連絡し、案件の紹介可否や条件をご案内します。"},
@@ -14,7 +14,7 @@ function contactNotification(data){
  const subject="【資料ダウンロード】"+contactIntents[data.action].label+" / "+data.company_name;
  return {_subject:subject,_template:"table",email:data.email,
  "受付番号":data.request_id,"ご用件":contactIntents[data.action].label,"会社名":data.company_name,"担当者名":data.contact_name,"電話番号":data.phone,"メールアドレス":data.email,
- "電話可能日":data.preferred_window==="now"?"今すぐの連絡を希望":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="now"?"今すぐ":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般"};
+ "電話可能日":data.preferred_window==="now"?"今すぐの連絡を希望":data.preferred_date||"指定なし","電話可能時間帯":data.preferred_window==="now"?"今すぐ":data.preferred_window==="any"?"指定なし":data.preferred_window,"案件ID":c?.case_id||"案件全般","案件種別":c?serviceLabel(c.service_code):"全般","希望エリア":data.requested_area||[c?.pref,c?.city].filter(Boolean).join(" ")||"指定なし"};
 }
 async function contactRequest(data){
  const registered=await call({api:"conversion_submit",...data,visit_id:window.LeadMapActivity?.id||null});
@@ -37,13 +37,13 @@ function contactSetBusy(busy){contactSubmitting=busy;contactEl("contactSubmit").
 async function openContactDialog(action,caseId,opener){
  if(contactSubmitting)return;
  const version=++contactOpenVersion;contactAction=Object.hasOwn(contactIntents,action)?action:"conditions";contactCaseId=caseId||null;contactOpener=opener;contactSubmissionId=null;contactSubmissionBody=null;
- const c=contactCaseId?contactCases.get(contactCaseId):null;
+ const c=contactCaseId?contactCases.get(contactCaseId):null;contactRequestedArea=typeof view!=="undefined"&&view.label!=="全国"?view.label:"";
  const intent=contactIntents[contactAction];
  contactEl("contactIntent").textContent=intent.label;
  contactEl("contactHeading").textContent=intent.heading;
  contactEl("contactIntro").querySelector(".dialog-intro").textContent=intent.intro;
  contactEl("contactSubmit").textContent=intent.submit;
- contactEl("contactCase").textContent=c?[serviceLabel(c.service_code),c.pref,c.city].filter(Boolean).join(" ／ ")+"\n案件ID："+c.case_id:"案件・対応エリア全般について";
+ contactEl("contactCase").textContent=c?[serviceLabel(c.service_code),c.pref,c.city].filter(Boolean).join(" ／ ")+"\n案件ID："+c.case_id:contactRequestedArea+ (contactRequestedArea?"の紹介条件について":"案件・対応エリア全般について");
  contactEl("contactIntro").querySelector(".dialog-intro").hidden=false;contactEl("contactIntro").hidden=false;contactEl("contactSuccess").hidden=true;contactEl("contactForm").hidden=true;contactEl("contactUnavailable").hidden=true;contactEl("contactLoading").hidden=false;contactEl("contactError").hidden=true;
  contactEl("contactDate").min=contactToday();contactEl("contactDate").max=new Date(Date.now()+90*86400000+9*3600000).toISOString().slice(0,10);
  const fallback=c?responseMail(c,contactAction==="respond"?"対応":"相談"):"mailto:"+CONTACT_EMAIL+"?subject="+encodeURIComponent("【案件エリアマップ】"+intent.label)+"&body="+encodeURIComponent("会社名：\n担当者名：\n電話番号：\nメールアドレス：\nご用件："+intent.label);
@@ -79,6 +79,7 @@ async function handleContactSubmit(e){
    invalid.forEach(el=>el.setAttribute("aria-invalid","true"));return;
   }
   const payload={action:contactAction,case_id:contactCaseId,company_name:contactEl("contactCompany").value,contact_name:contactEl("contactName").value,phone:contactEl("contactPhone").value.normalize("NFKC").replace(/[\s()（）ー－-]/g,""),email:contactEl("contactEmail").value.toLowerCase(),preferred_date:contactEl("contactDate").value||null,preferred_window:form.querySelector('input[name="callback_time"]:checked')?.value||"any"};
+  if(contactRequestedArea)payload.requested_area=contactRequestedArea;
   if(payload.phone.startsWith("+81"))payload.phone="0"+payload.phone.slice(3);
   if(!/^0[1-9][0-9]{8,9}$/.test(payload.phone)){contactShowError("電話番号は10桁または11桁で入力してください。ハイフン付きでも入力できます。");contactEl("contactPhone").setAttribute("aria-invalid","true");return;}
   if(payload.preferred_window==="now")payload.preferred_date=null;

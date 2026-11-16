@@ -3,6 +3,7 @@ import { ACCESS_HASH } from "./access-config.ts";
 import { contactConfig, submitContact } from "./contact.ts";
 import { ADMIN_HASH, CHAT_WEBHOOK } from "./notification-config.ts";
 import { normalizeActivity, registerConversion, deliverChat, postChat, uuid, normalizeCompanies } from "./activity.ts";
+import { publicPage, publicBootstrap, normalizeCampaign } from "./sharing.ts";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-lead-map-key,x-lead-map-admin","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
 async function sha256Hex(input:string){const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(input));return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,"0")).join("");}
 function out(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});}
@@ -19,7 +20,9 @@ Deno.serve(async(req:Request)=>{
   const get=(k:string)=>body[k]??url.searchParams.get(k);
   const api=String(get("api")||"summary"),adminRoute=api.startsWith("admin_");
   const token=adminRoute?req.headers.get("x-lead-map-admin")||"":req.headers.get("x-lead-map-key")||url.searchParams.get("k")||"";
-  if(!token||await sha256Hex(token)!==(adminRoute?ADMIN_HASH:ACCESS_HASH))return out({error:"forbidden"},403);
+  const publicRoutes=['bootstrap','summary','metrics','cases','case_filters','site_config','activity','conversion_submit','conversion_email_ack'];
+  const publicView=!adminRoute&&!token&&publicRoutes.includes(api);
+  if(!publicView&&(!token||await sha256Hex(token)!==(adminRoute?ADMIN_HASH:ACCESS_HASH)))return out({error:"forbidden"},403);
   if((adminRoute||["activity","conversion_submit","conversion_email_ack"].includes(api))&&req.method!=="POST")return out({error:"method_not_allowed"},405);
   const services=String(get("services")||"gaiheki,amamori").split(",");
   if(!services.length||services.some(s=>!["gaiheki","amamori"].includes(s)))return out({error:"invalid_services"},400);
@@ -29,6 +32,33 @@ Deno.serve(async(req:Request)=>{
   const secret=secrets.default||Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if(!secret)return out({error:"server_config"},500);
   const sb=createClient(Deno.env.get("SUPABASE_URL")!,secret,{auth:{persistSession:false}});
+  if(api==='site_config'||api==='admin_site_config'){
+   const {data,error}=await sb.from('lead_map_site_settings').select('payload,updated_at').eq('id','campaign').maybeSingle();
+   if(error)return out({error:'config_unavailable'},500);
+   return out({campaign:normalizeCampaign(data?.payload||{enabled:false}),updated_at:data?.updated_at||null});
+  }
+  if(api==='admin_save_campaign'){
+   let campaign;try{campaign=normalizeCampaign(body.campaign)}catch{return out({error:'invalid_campaign'},400);}
+   const {error}=await sb.from('lead_map_site_settings').upsert({id:'campaign',payload:campaign,updated_at:new Date().toISOString()});
+   return error?out({error:'config_unavailable'},500):out({ok:true,campaign});
+  }
+  if(api==='admin_crm_search'){
+   const q=String(body.query||'').normalize('NFKC').trim();
+   if(q.length<2||q.length>80||/[\u0000-\u001f]/.test(q))return out({error:'invalid_query'},400);
+   let query=sb.from('companies').select('id,public_id,company_name,phone,mobile,email,prefecture,city');
+   if(body.field==='phone'){
+    const phone=q.replace(/[\s()-]/g,'').replace(/^\+81/,'0');
+    if(!/^0[0-9]{9,10}$/.test(phone))return out({error:'invalid_phone'},400);
+    query=query.or('phone_norm.eq.'+phone+',mobile_norm.eq.'+phone);
+   }else if(body.field==='id')query=query.eq('public_id',q);
+   else query=query.ilike('company_name','%'+q.replace(/[\%_]/g,'')+'%');
+   const {data,error}=await query.order('id').limit(20);
+   return error?out({error:'crm_unavailable'},500):out({rows:data||[],limit:20});
+  }
+  if(api==='admin_crm_link'){
+   const id=String(body.company_id||'');if(!/^[1-9][0-9]{0,17}$/.test(id))return out({error:'invalid_company'},400);
+   const {data,error}=await sb.rpc('lead_map_link_crm_company_v1',{p_company_id:id});return error?out({error:'company_unavailable'},400):out(data);
+  }
   if(api==="admin_report"){
    const days=Number(body.days??7);if(![1,7,30].includes(days))return out({error:"invalid_days"},400);
    const {data,error}=await sb.rpc("lead_map_admin_report_v2",{p_days:days});return error?out({error:"report_unavailable"},500):out(data);
@@ -64,9 +94,10 @@ Deno.serve(async(req:Request)=>{
   if(["bootstrap","summary","metrics"].includes(api)){
    const {data,error}=await sb.rpc("lead_map_bootstrap_v2",common);
    if(error){console.error("lead-map bootstrap",error.code);return out({error:"data_unavailable"},500)}
-   if(api==="summary")return out({rows:data.rows,snapshot:data.snapshot});
-   if(api==="metrics")return out({...data.metrics,snapshot:data.snapshot});
-   return out(data);
+   const visible=publicView?publicBootstrap(data):data;
+   if(api==="summary")return out({rows:visible.rows,snapshot:visible.snapshot});
+   if(api==="metrics")return out({...visible.metrics,snapshot:visible.snapshot});
+   return out(visible);
   }
   if(api==="cases"||api==="case_filters"){
    const raw=get("keys");
@@ -75,16 +106,17 @@ Deno.serve(async(req:Request)=>{
    if(api==="case_filters"){
     const {data,error}=await sb.rpc("lead_map_filter_options_v3",{...common,p_keys:keys});
     if(error)return out({error:"data_unavailable"},500);
-    return out(data);
+    return out(publicView?{total:data.total,fields:{service_code:[{value:'gaiheki'},{value:'amamori'}]}}:data);
    }
    let filters=get("filters")??{};
    if(typeof filters==="string"){try{filters=JSON.parse(filters)}catch{return out({error:"invalid_filters"},400)}}
    if(!filters||typeof filters!=="object"||Array.isArray(filters)||Object.keys(filters).length>12||Object.entries(filters).some(([k,v])=>k.length>160||typeof v!=="string"||!v||v.length>160||!(/^(service_code|items|recent_days|q:.+|d:(building_type|consideration_level|symptoms|story|age_of_building))$/.test(k))||(k==="recent_days"&&!["1","3","7","30"].includes(v))||(k==="service_code"&&!["gaiheki","amamori"].includes(v))))return out({error:"invalid_filters"},400);
+   if(publicView&&Object.keys(filters).some(k=>!['service_code','recent_days'].includes(k)))return out({error:'invalid_filters'},400);
    const limit=Number(get("limit")??10),offset=Number(get("offset")??0);
    if(!Number.isInteger(limit)||limit<1||!Number.isInteger(offset)||offset<0)return out({error:"invalid_page"},400);
    const {data,error}=await sb.rpc("lead_map_page_v3",{...common,p_keys:keys,p_limit:Math.min(limit,50),p_offset:offset,p_filters:filters});
    if(error){console.error("lead-map page",error.code);return out({error:"data_unavailable"},500)}
-   return out(data);
+   return out(publicView?publicPage(data):data);
   }
   return out({error:"not_found"},404);
  }catch{ return out({error:"request_failed"},500); }

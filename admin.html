@@ -6,11 +6,12 @@
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex,nofollow">
 <title>案件エリアマップ｜利用状況管理</title>
-<link rel="stylesheet" href="style.css?v=18">
-<link rel="stylesheet" href="admin.css?v=18">
-<script defer src="admin.js?v=18">
+<link rel="stylesheet" href="style.css?v=19">
+<link rel="stylesheet" href="admin.css?v=19">
+<script defer src="admin.js?v=19">
 </script>
-<script defer src="admin-companies.js?v=18">
+<script defer src="admin-experience.js?v=19"></script>
+<script defer src="admin-companies.js?v=19">
 </script>
 </head>
 <body class="admin-page">
@@ -37,6 +38,7 @@
 <nav class="admin-page-nav" aria-label="管理メニュー">
 <a href="#activity" data-admin-page="activity" aria-current="page">利用状況</a>
 <a href="#links" data-admin-page="links">会社別URLの発行</a>
+<a href="#campaign" data-admin-page="campaign">キャンペーン設定</a>
 </nav>
 <section id="analyticsView">
 <div class="admin-toolbar">
@@ -194,7 +196,7 @@
 <div>
 <p class="issuer-eyebrow">会社別のアクセス計測</p>
 <h2 id="issuerTitle">共有用URLを発行する</h2>
-<p>送付先の会社にひも付くURLを作成します。メールがない業者にも使えます。</p>
+<p>送付先の会社にひも付くURLを作成します。LINE・Web商談で使える共通URLと、会社を識別できる専用URLを作れます。</p>
 </div>
 <a class="issuer-help-link" href="#issuerHelp">使い方を見る</a>
 </div>
@@ -203,14 +205,14 @@
 <span class="issuer-step">01</span>
 <div>
 <h3 id="issuerBaseTitle">共有するページを指定</h3>
-<p>案件が表示できる、業者向けの閲覧URLを貼り付けてください。</p>
+<p>共通URLは設定済みです。閲覧キー付きの既存URLも引き続き使えます。</p>
 </div>
 </div>
 <label class="issuer-label" for="companyBaseURL">案件マップの閲覧URL</label>
-<input id="companyBaseURL" type="url" autocomplete="off" spellcheck="false" placeholder="https://kame0483.github.io/madoguchi-lead-map/?k=…" aria-describedby="baseURLHint baseURLStatus">
+<input id="companyBaseURL" value="https://kame0483.github.io/madoguchi-lead-map/" type="url" autocomplete="off" spellcheck="false" placeholder="https://kame0483.github.io/madoguchi-lead-map/?k=…" aria-describedby="baseURLHint baseURLStatus">
 <div class="issuer-base-meta">
-<p id="baseURLHint">この管理画面のURLや管理キーではありません。</p>
-<p id="baseURLStatus" role="status">
+<p id="baseURLHint">共通URLは入力不要で閲覧できます。顧客情報を伏せた案件概要を表示します。</p>
+<button id="copyCommonURL" type="button" class="issuer-export">共通URLをコピー</button><p id="baseURLStatus" role="status">
 </p>
 </div>
 </section>
@@ -224,11 +226,13 @@
 </div>
 </div>
   <div class="issuer-modes" role="group" aria-label="発行する方法">
+<button type="button" data-issuer-mode="crm" aria-pressed="false">MFから探す</button>
 <button type="button" data-issuer-mode="single" aria-pressed="true">1社だけ発行</button>
 <button type="button" data-issuer-mode="bulk" aria-pressed="false">まとめて発行</button>
 <button id="loadCompanyLinks" type="button" data-issuer-mode="registered" aria-pressed="false">登録済みから選ぶ</button>
 </div>
-  <div id="issuerSingle" class="issuer-pane">
+  <div id="issuerCRM" class="issuer-pane" hidden><p class="issuer-pane-intro">madoguchi forceの会社を選ぶと、会社情報を転記せずに専用URLを作成できます。拠点の都道府県から開くURLになります。</p><form id="crmSearchForm"><div class="issuer-field"><label for="crmSearchField">検索する情報</label><select id="crmSearchField"><option value="name">会社名</option><option value="phone">電話番号</option><option value="id">MFの会社番号</option></select></div><div class="issuer-field"><label for="crmQuery">検索キーワード</label><input id="crmQuery" type="search" placeholder="会社名は2文字以上で検索" maxlength="80" autocomplete="off"></div><button id="crmSearchButton" type="submit" class="issuer-secondary">madoguchi forceから検索</button></form><p id="crmSearchStatus" class="issuer-form-status" role="status"></p><div id="crmSearchResults" class="crm-results"></div><p class="admin-note">この操作でMFの会社情報や営業履歴を変更せず、メールも送信しません。連絡先を業者向けページへ自動公開することはありません。</p></div>
+<div id="issuerSingle" class="issuer-pane">
 <form id="singleCompanyForm" novalidate>
 <div class="issuer-field">
 <label for="singleCompanyName">会社名 <span>必須</span>
@@ -341,10 +345,11 @@
 <p>
 <strong>まとめて発行：</strong>会社名・メールの2列、会社名・電話番号（会社ID）の2列、会社名・メール・会社IDの3列に対応しています。メールがない場合は、電話番号または会社IDを入力してください。</p>
 <p>URLには会社名や電話番号を含めません。専用URLの転送先で操作された場合も、元の送付先会社として記録されます。この画面からメールやSMSの送信は行いません。</p>
-<p>閲覧URLはこの画面でリンク作成に使い、会社の一覧と一緒にサーバーへ保存しません。</p>
+<p>共通URLからの訪問は匿名です。MFで選んだ会社の専用URLからの訪問は、その会社として記録します。MFの電話・メールは管理画面内での確認用です。共通URLでは顧客の連絡先・詳しい住所を表示しません。</p><p>閲覧URLはこの画面でリンク作成に使い、会社の一覧と一緒にサーバーへ保存しません。</p>
 </div>
 </details>
 </section>
+<section id="campaignView" class="campaign-admin" hidden aria-labelledby="campaignAdminTitle"><div class="issuer-heading"><div><p class="issuer-eyebrow">営業用のご案内</p><h2 id="campaignAdminTitle">キャンペーン設定</h2><p>保存すると、共通URL・既存の閲覧URLの両方に反映します。</p></div></div><form id="campaignForm" class="admin-section" novalidate><label class="campaign-enabled"><input id="campaignEnabled" type="checkbox">キャンペーン案内を表示する</label><div class="issuer-field"><label for="campaignEditTitle">見出し</label><input id="campaignEditTitle" maxlength="80" placeholder="実施が決まっているキャンペーン名"></div><div class="issuer-field"><label for="campaignEditBody">ご案内内容</label><textarea id="campaignEditBody" rows="3" maxlength="500"></textarea></div><div class="issuer-field"><label for="campaignEditTerms">対象・適用条件</label><textarea id="campaignEditTerms" rows="3" maxlength="300" placeholder="対象サービス・費用の適用範囲・利用条件を記載"></textarea><p>表示する場合は、見出し・内容・適用条件・ボタン文言が必須です。</p></div><div class="campaign-admin-grid"><div class="issuer-field"><label for="campaignEditEnd">受付期限（日本時間・任意）</label><input id="campaignEditEnd" type="date"><p>期限の翌日から自動で非表示になります。</p></div><div class="issuer-field"><label for="campaignEditAction">ボタンの問い合わせ先</label><select id="campaignEditAction"><option value="conditions">紹介条件の相談</option><option value="materials">資料請求</option><option value="trial">無料トライアルの相談</option></select></div></div><div class="issuer-field"><label for="campaignEditLabel">ボタンの文言</label><input id="campaignEditLabel" maxlength="40" placeholder="例：対象になるか確認する"></div><div class="campaign-admin-actions"><button id="saveCampaign" type="submit" class="issuer-primary">設定を保存して反映する</button><button id="reloadCampaign" type="button">保存済みの設定を読み込む</button></div><p id="campaignAdminStatus" role="status" class="issuer-form-status"></p></form><section class="campaign-admin-preview"><p class="issuer-eyebrow">表示プレビュー</p><div id="campaignPreview" class="campaign-banner"><div><span class="campaign-kicker">ご検討中の施工会社様へ</span><h2 id="campaignPreviewTitle"></h2><p id="campaignPreviewBody"></p><small id="campaignPreviewTerms"></small></div><div><p id="campaignPreviewEnd"></p><button id="campaignPreviewButton" type="button" disabled>ボタン文言</button></div></div><p class="admin-note">プレビューは入力中の内容です。保存するまでサイトへ反映されません。キャンペーンや特典の内容は事前に確認した条件を入力してください。</p></section></section>
 </div>
 </main>
 </body>

@@ -1,7 +1,6 @@
 "use strict";
 // Anonymous tab sessions. Never record form values, raw URLs, viewing keys or IPs.
 (()=>{
- if(!TOKEN)return;
  let saved=null;try{saved=JSON.parse(sessionStorage.getItem('lead-map-visit')||'null')}catch{}
  const code=params.get('company')||'',company=/^[A-Za-z0-9_-]{1,64}$/.test(code)?code:'';
  const valid=saved&&/^[0-9a-f-]{36}$/i.test(saved.id)&&Date.now()-saved.updated<1800000&&(saved.company||'')===company;

@@ -16,7 +16,8 @@ export function normalizeContact(body:Record<string,unknown>){
   const d=new Date(date+"T00:00:00+09:00"),today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(d.getTime())||new Date(d.getTime()+9*3600000).toISOString().slice(0,10)!==date||date<today||d.getTime()>Date.now()+91*86400000)throw new Error("invalid_contact");
  }
- return {request_id:requestId,action,case_id:caseId,company_name:company,contact_name:name,email,phone,preferred_date:date,preferred_window:window};
+ const area=txt("requested_area",100);
+ return {request_id:requestId,action,case_id:caseId,company_name:company,contact_name:name,email,phone,preferred_date:date,preferred_window:window,...(area?{requested_area:area}:{})};
 }
 export function contactMail(kind:string,row:any){
  const c=row.case_snapshot||{},label=({respond:"案件対応のご希望",conditions:"条件についてのご相談",materials:"サービス資料のご請求",trial:"無料トライアルについてのご相談"} as Record<string,string>)[row.action]||"お問い合わせ";

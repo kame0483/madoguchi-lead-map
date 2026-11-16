@@ -16,9 +16,8 @@ const serviceLabel=s=>s==="amamori"?"雨漏り":"外壁";
 const dateText=s=>{const d=new Date(s);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(d):"受付日未登録"};
 let summaries=[],snapshot=null,service="all",geoIndex=null;
 const geoCache=new Map();
-let map=null,layer=null,rangeCircle=null,view={kind:"nation",label:"全国",keys:null,pref:""},generation=0,pageController=null,pageLoading=false,pageCount=0,pageTotal=0,seen=new Set();
+let map=null,layer=null,rangeCircle=null,baseTiles=null,japanOutline=null,outlineJob=null,view={kind:"nation",label:"全国",keys:null,pref:""},generation=0,pageController=null,pageLoading=false,pageCount=0,pageTotal=0,seen=new Set();
 async function call(data,signal){
- if(!TOKEN)throw new Error("閲覧キーがありません。担当者から届いた閲覧URLを開いてください。");
  const controller=new AbortController();
  const abort=()=>controller.abort();if(signal?.aborted)abort();else signal?.addEventListener("abort",abort,{once:true});
  const timer=setTimeout(abort,20000);
@@ -49,10 +48,10 @@ function findGeo(rows,city){const aliases={"三宅島三宅村":"三宅村","八
 function initMap(){
  if(typeof L==="undefined"){ $("map").innerHTML='<div class="empty">地図を読み込めませんでした。下の地域選択と案件一覧をご利用ください。</div>';return;}
  const bounds=L.latLngBounds([23,122],[46.5,147]);
- map=L.map("map",{maxBounds:bounds,maxBoundsViscosity:1,minZoom:4,maxZoom:12,scrollWheelZoom:false}).setView([36,137.5],4);
- const tiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',noWrap:true,bounds,referrerPolicy:'origin'}).addTo(map);
+ map=L.map("map",{maxBounds:bounds,maxBoundsViscosity:1,minZoom:4,maxZoom:12,scrollWheelZoom:false,worldCopyJump:false,zoomSnap:0.25,zoomDelta:0.5}).setView([36,137.5],4);
+ const tiles=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',noWrap:true,bounds,referrerPolicy:'origin'});baseTiles=tiles;
  let tileErrors=0,fallback=false;
- tiles.on('tileerror',()=>{if(++tileErrors<3||fallback)return;fallback=true;tiles.remove();L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{maxZoom:12,noWrap:true,bounds,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>'}).addTo(map)});
+ tiles.on('tileerror',()=>{if(++tileErrors<3||fallback)return;fallback=true;tiles.remove();baseTiles=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',{maxZoom:12,noWrap:true,bounds,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>'});if(view.kind!=='nation')baseTiles.addTo(map)});
  layer=L.layerGroup().addTo(map);
  map.on('zoomend moveend resize',()=>{if(snapshot&&view.kind==='nation')renderNationalMarkers()});
 }
@@ -65,7 +64,13 @@ function renderNationalMarkers(){
  if(!map)return;layer.clearLayers();const totals=totalsByPref();
  Object.entries(PREF_CENTERS).forEach(([pref,p])=>addMarker({lat:p[0],lng:p[1]},pref,totals.get(pref)||0,()=>showPref(pref)));
 }
-function drawNation(){clearMap();if(map)map.fitBounds([[26,127],[45.5,145.5]],{padding:[28,28],maxZoom:5});renderNationalMarkers();$("mapHint").textContent="拡大して都道府県を選択";$("cityChoices").replaceChildren()}
+function showJapanOutline(){
+ if(!map)return;if(baseTiles&&map.hasLayer(baseTiles))map.removeLayer(baseTiles);
+ if(japanOutline){japanOutline.addTo(map);return;}
+ if(!outlineJob)outlineJob=fetch('assets/japan-outline.json').then(r=>{if(!r.ok)throw Error();return r.json()}).then(g=>{japanOutline=L.geoJSON(g,{interactive:false,style:{color:'#819a85',weight:1,fillColor:'#d5e2d2',fillOpacity:1}});if(view.kind==='nation')japanOutline.addTo(map)}).catch(()=>{outlineJob=null;});
+}
+function showLocalTiles(){if(!map)return;if(japanOutline)japanOutline.remove();if(baseTiles&&!map.hasLayer(baseTiles))baseTiles.addTo(map);}
+function drawNation(){clearMap();showJapanOutline();if(map){map.setMinZoom(4);map.fitBounds([[25.5,126.5],[45.5,145.5]],{padding:[28,28],maxZoom:5,animate:false});map.setMinZoom(map.getZoom());}renderNationalMarkers();$("mapHint").textContent="拡大して都道府県を選択";$("cityChoices").replaceChildren()}
 function refreshPrefCounts(){
  const totals=totalsByPref(),container=$("prefCounts");container.replaceChildren();
  Object.keys(PREF_CENTERS).forEach(pref=>{const b=document.createElement('button');b.type='button';b.innerHTML='<span>'+esc(pref)+'</span><b>'+fmt(totals.get(pref)||0)+'件</b>';b.onclick=()=>run(()=>showPref(pref));container.append(b)});
@@ -78,7 +83,7 @@ function cityButtons(pref,all=false){
 }
 async function drawPref(pref,id){
  let rows;try{rows=await ensureGeo(pref)}catch(e){if(id===generation)report(e);return}if(id!==generation)return;
- clearMap();const points=[];let missing=0;totalsByCity(pref).forEach((count,k)=>{const city=k.split('|')[1],g=findGeo(rows,city);if(!g){missing+=count;return}points.push([g.lat,g.lng]);addMarker(g,city,count,()=>showCity(k))});
+ clearMap();showLocalTiles();const points=[];let missing=0;totalsByCity(pref).forEach((count,k)=>{const city=k.split('|')[1],g=findGeo(rows,city);if(!g){missing+=count;return}points.push([g.lat,g.lng]);addMarker(g,city,count,()=>showCity(k))});
  if(map){if(points.length)map.fitBounds(points,{padding:[35,35],maxZoom:9});else map.setView(PREF_CENTERS[pref],8)}
  $("mapHint").textContent=missing?"位置未登録 "+fmt(missing)+"件も一覧に含みます":"市区町村を選択";
 }
@@ -95,7 +100,7 @@ if(typeof window!=="undefined"){
  window.addEventListener("resize",scheduleNav,{passive:true});
  if("IntersectionObserver" in window)new IntersectionObserver(scheduleNav).observe($("casePanel"));
 }
-function setArea(label,count,copy){$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。下の案件一覧で、具体的な工事内容を確認できます。";$("stickyListCount").textContent=fmt(count)+"件";updateListNav()}
+function setArea(label,count,copy){window.LeadMapExperience?.areaChanged(label,count);$("areaEyebrow").textContent=label+"の対応可能な見込案件";$("areaBig").textContent=fmt(count);$("areaCopy").textContent=copy||"このエリア全体で"+fmt(count)+"件。下の案件一覧で、具体的な工事内容を確認できます。";$("stickyListCount").textContent=fmt(count)+"件";updateListNav()}
 function updateURL(){const u=new URL(location.href);["pref","city","r","service","area"].forEach(k=>u.searchParams.delete(k));if(view.pref)u.searchParams.set("pref",view.pref);if(view.city)u.searchParams.set("city",view.city);if(view.kind==="radius")u.searchParams.set("r",view.radius);if(view.kind==="city")u.searchParams.set("area","city");if(service!=="all")u.searchParams.set("service",service);history.replaceState(null,"",u)}
 function beginView(next){
  window.LeadMapActivity?.track("area_search",{area:next.label});generation++;contactCases.clear();pageController?.abort();pageLoading=false;view=next;pageCount=0;pageTotal=sumKeys(next.keys);seen=new Set();
@@ -236,6 +241,11 @@ function responseMail(c,type){
 function isNewCase(c){const d=new Date(c.effective_at||c.inquired_at||c.received_at);const age=new Date(snapshot||Date.now()).getTime()-d.getTime();return Number.isFinite(age)&&age>=0&&age<=3*86400000}
 function consultLink(c){return /^https:\/\//.test(CALENDAR_URL)?CALENDAR_URL:responseMail(c,"相談")}
 function cardHTML(c){
+ if(c.public_preview){
+  contactCases.set(String(c.case_id),{case_id:String(c.case_id),pref:c.pref,city:c.city,service_code:c.service_code});
+  return '<article class="card public-card"><div class="top"><div><div class="city">'+esc(c.pref)+' '+esc(c.city)+(isNewCase(c)?'<span class="new-badge">新着</span>':'')+'</div><div class="meta">'+esc(dateText(c.effective_at||c.inquired_at||c.received_at))+' 受付</div></div><span class="badge">'+serviceLabel(c.service_code)+'</span></div><div class="work-title">'+(c.service_code==='amamori'?'雨漏りのご相談':'外壁・屋根工事のご相談')+'</div><div class="info-grid">'+(c.public_facts||[]).map(x=>infoBox(x.label,x.value)).join('')+'</div><p class="public-card-note">紹介可否や詳しい内容は、担当者が確認してご案内します。</p><div class="actions"><button type="button" class="action main" data-contact-action="respond" data-contact-id="'+esc(c.case_id)+'">この案件の紹介条件を確認</button><button type="button" class="action" data-contact-action="conditions" data-contact-id="'+esc(c.case_id)+'">まず相談したい</button></div></article>';
+ }
+
  contactCases.set(String(c.case_id),{case_id:String(c.case_id),pref:c.pref,city:c.city,service_code:c.service_code});
  const date=dateText(c.effective_at||c.inquired_at||c.received_at),badge=isNewCase(c)?'<span class="new-badge">新着</span>':'',target=CALENDAR_URL?' target="_blank" rel="noopener noreferrer"':'';
  const postal=c.postal_code?'〒'+c.postal_code+' ':'';
@@ -257,7 +267,7 @@ async function showRadius(pref,city,radius){
   // Match each DB municipality once, even where the coordinate source has aliases.
   for(const [k,count] of totals){const [p,c]=k.split('|'),set=sets.find(a=>a[0]?.pref===p);if(!set)continue;const g=findGeo(set,c);if(g&&hav(center,g)<=radius)selected.set(k,{g,count})}
   const keys=[...selected.keys()],label=pref+' '+city+'から'+radius+'km圏内';
-  $("q").value=pref+city;const id=beginView({kind:"radius",label,keys,pref,city,radius});clearMap();$("cityChoices").replaceChildren();
+  $("q").value=pref+city;const id=beginView({kind:"radius",label,keys,pref,city,radius});clearMap();showLocalTiles();$("cityChoices").replaceChildren();
   selected.forEach(({g,count},k)=>addMarker(g,k.split('|')[1],count,()=>showCity(k)));
   if(map){rangeCircle=L.circle([center.lat,center.lng],{radius:radius*1000,color:'#476e62',weight:1,fillOpacity:.04,interactive:false}).addTo(map);map.fitBounds(rangeCircle.getBounds(),{padding:[28,28],maxZoom:10})}
   $("mapHint").textContent=selected.size+'市区町村を合計';await loadPage(id);
@@ -303,7 +313,7 @@ async function bootstrap(){
   await rerender();
  }catch(e){
   report(e);$("updatedAt").textContent=snapshot?'更新できませんでした（前回取得分を表示）':'取得できませんでした';
-  if(!snapshot){$("list").innerHTML='<div class="empty">'+esc(e.message)+'</div>';$("list").setAttribute('aria-busy','false');$("sub").textContent='担当者から届いた閲覧URLをご確認ください'}
+  if(!snapshot){$("list").innerHTML='<div class="empty">'+esc(e.message)+'</div>';$("list").setAttribute('aria-busy','false');$("sub").textContent='通信状況を確認し、もう一度更新してください'}
  }finally{$("refresh").disabled=false;setSearchBusy(false)}
 }
 $("searchForm").addEventListener('submit',e=>{e.preventDefault();run(search)});
